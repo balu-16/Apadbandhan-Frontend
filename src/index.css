@@ -1,0 +1,302 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light Theme (Default) */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 24 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 24 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom Apadbandhav Colors - Light */
+    --midnight-navy: 0 0% 98%;
+    --deep-blue: 0 0% 100%;
+    --card-border: 214 32% 91%;
+    --light-text: 222 47% 11%;
+    --emergency-orange: 24 100% 50%;
+    --emergency-orange-glow: 24 100% 60%;
+    
+    /* Gradients - Light */
+    --gradient-hero: linear-gradient(135deg, hsl(0 0% 98%) 0%, hsl(0 0% 100%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 40% 98%) 100%);
+    --gradient-orange: linear-gradient(135deg, hsl(24 100% 50%) 0%, hsl(24 100% 45%) 100%);
+    
+    /* Shadows - Light */
+    --shadow-card: 0 4px 20px -4px hsl(214 32% 91% / 0.8);
+    --shadow-glow: 0 0 20px hsl(24 100% 50% / 0.2);
+    --shadow-glow-strong: 0 0 30px hsl(24 100% 50% / 0.3);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 24 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 24 100% 50%;
+  }
+
+  /* Dark Theme */
+  .dark {
+    --background: 213 45% 11%;
+    --foreground: 210 20% 93%;
+
+    --card: 216 36% 17%;
+    --card-foreground: 210 20% 93%;
+
+    --popover: 216 36% 17%;
+    --popover-foreground: 210 20% 93%;
+
+    --primary: 24 100% 55%;
+    --primary-foreground: 210 20% 98%;
+
+    --secondary: 213 30% 37%;
+    --secondary-foreground: 210 20% 93%;
+
+    --muted: 216 36% 22%;
+    --muted-foreground: 210 15% 65%;
+
+    --accent: 213 30% 37%;
+    --accent-foreground: 210 20% 93%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 213 30% 37%;
+    --input: 216 36% 22%;
+    --ring: 24 100% 55%;
+
+    /* Custom Apadbandhav Colors - Dark */
+    --midnight-navy: 213 45% 11%;
+    --deep-blue: 216 36% 17%;
+    --card-border: 213 30% 37%;
+    --light-text: 210 20% 93%;
+    --emergency-orange: 24 100% 55%;
+    --emergency-orange-glow: 24 100% 65%;
+    
+    /* Gradients - Dark */
+    --gradient-hero: linear-gradient(135deg, hsl(213 45% 11%) 0%, hsl(216 36% 17%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(216 36% 20%) 0%, hsl(216 36% 15%) 100%);
+    --gradient-orange: linear-gradient(135deg, hsl(24 100% 55%) 0%, hsl(24 100% 45%) 100%);
+    
+    /* Shadows - Dark */
+    --shadow-card: 0 10px 40px -10px hsl(213 45% 5% / 0.5);
+    --shadow-glow: 0 0 30px hsl(24 100% 55% / 0.3);
+    --shadow-glow-strong: 0 0 40px hsl(24 100% 55% / 0.5);
+
+    --sidebar-background: 213 45% 11%;
+    --sidebar-foreground: 210 20% 93%;
+    --sidebar-primary: 24 100% 55%;
+    --sidebar-primary-foreground: 210 20% 98%;
+    --sidebar-accent: 216 36% 22%;
+    --sidebar-accent-foreground: 210 20% 93%;
+    --sidebar-border: 213 30% 37%;
+    --sidebar-ring: 24 100% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-poppins antialiased;
+  }
+}
+
+@layer components {
+  .gradient-hero {
+    background: linear-gradient(135deg, hsl(var(--midnight-navy)) 0%, hsl(var(--deep-blue)) 100%);
+  }
+
+  .gradient-card {
+    background: linear-gradient(180deg, hsl(var(--deep-blue)) 0%, hsl(var(--midnight-navy)) 100%);
+  }
+
+  .gradient-orange {
+    background: linear-gradient(135deg, hsl(var(--emergency-orange)) 0%, hsl(24 100% 45%) 100%);
+  }
+
+  .glow-orange {
+    box-shadow: 0 0 30px hsl(var(--emergency-orange) / 0.4);
+  }
+
+  .glow-orange-strong {
+    box-shadow: 0 0 50px hsl(var(--emergency-orange) / 0.6);
+  }
+
+  .text-gradient-orange {
+    background: linear-gradient(135deg, hsl(var(--emergency-orange)) 0%, hsl(24 100% 70%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card-glow {
+    box-shadow: 0 10px 40px -10px hsl(213 45% 5% / 0.5);
+  }
+
+  .border-glow {
+    border: 1px solid hsl(var(--card-border) / 0.5);
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-right {
+    animation: slideRight 0.5s ease-out forwards;
+  }
+
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .hover-scale {
+    @apply transition-transform duration-300 ease-out hover:scale-105;
+  }
+
+  .hover-glow {
+    @apply transition-shadow duration-300 ease-out;
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 0 30px hsl(var(--emergency-orange) / 0.4);
+  }
+}
+
+@layer utilities {
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--emergency-orange) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(var(--emergency-orange) / 0.6);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes scan {
+  0% {
+    top: 16px;
+  }
+  50% {
+    top: calc(100% - 16px);
+  }
+  100% {
+    top: 16px;
+  }
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.75rem;
+  z-index: 1;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+}
+
+.leaflet-popup-content {
+  margin: 12px;
+}
+
+/* Fix for Leaflet tiles in dark mode */
+.leaflet-tile-pane {
+  filter: brightness(0.9) saturate(1.1);
+}
