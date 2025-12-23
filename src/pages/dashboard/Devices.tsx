@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  Smartphone, 
-  MapPin, 
-  Plus, 
-  Wifi, 
+import {
+  Smartphone,
+  MapPin,
+  Plus,
+  Wifi,
   WifiOff,
   Clock,
   ChevronRight,
@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeAgo } from "@/lib/utils";
 import { devicesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import DeviceDetailsModal from "@/components/devices/DeviceDetailsModal";
@@ -60,7 +60,6 @@ interface Location {
 
 interface Device {
   _id: string;
-  id?: string;
   name: string;
   code: string;
   type: string;
@@ -77,22 +76,6 @@ interface Device {
   updatedAt: string;
 }
 
-// Helper to format time ago
-const formatTimeAgo = (date: string | undefined): string => {
-  if (!date) return "Never";
-  
-  const now = new Date();
-  const then = new Date(date);
-  const diffMs = now.getTime() - then.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-};
 
 interface DeviceCardProps {
   device: Device;
@@ -103,20 +86,20 @@ interface DeviceCardProps {
 }
 
 const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: DeviceCardProps) => (
-  <div 
+  <div
     className="block animate-fade-up opacity-0"
     style={{ animationDelay: delay, animationFillMode: "forwards" }}
   >
     <div className="bg-card border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 group hover:shadow-glow">
       <div className="flex items-start justify-between mb-4">
-        <div 
+        <div
           className="flex items-center gap-3 cursor-pointer flex-1"
           onClick={onClick}
         >
           <div className={cn(
             "w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300",
-            device.status === "online" 
-              ? "bg-green-500/20 group-hover:bg-green-500/30" 
+            device.status === "online"
+              ? "bg-green-500/20 group-hover:bg-green-500/30"
               : "bg-muted group-hover:bg-muted/80"
           )}>
             <Smartphone className={cn(
@@ -133,7 +116,7 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
             </p>
           </div>
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex items-center gap-3">
           {/* Status Badge */}
@@ -150,9 +133,9 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
             )}
             {device.status === "online" ? "Online" : "Offline"}
           </div>
-          
+
           {/* Toggle Online/Offline */}
-          <div 
+          <div
             className="flex items-center gap-2"
             onClick={(e) => e.stopPropagation()}
           >
@@ -162,7 +145,7 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
               className="data-[state=checked]:bg-green-500"
             />
           </div>
-          
+
           {/* Delete Button */}
           <button
             onClick={(e) => {
@@ -176,8 +159,8 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
           </button>
         </div>
       </div>
-      
-      <div 
+
+      <div
         className="flex items-center justify-between cursor-pointer"
         onClick={onClick}
       >
@@ -193,7 +176,7 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
             </div>
           )}
         </div>
-        
+
         <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
       </div>
     </div>
@@ -208,7 +191,7 @@ const Devices = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Delete confirmation state
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -224,7 +207,7 @@ const Devices = () => {
     const newStatus = device.status === "online" ? "offline" : "online";
     try {
       await devicesAPI.update(device._id, { status: newStatus });
-      setDevices(prev => prev.map(d => 
+      setDevices(prev => prev.map(d =>
         d._id === device._id ? { ...d, status: newStatus as "online" | "offline" } : d
       ));
       toast({
@@ -248,7 +231,7 @@ const Devices = () => {
 
   const handleDeleteConfirm = async () => {
     if (!deviceToDelete || deleteConfirmText !== "confirm to delete") return;
-    
+
     setIsDeleting(true);
     try {
       await devicesAPI.delete(deviceToDelete._id);
@@ -275,7 +258,7 @@ const Devices = () => {
     if (showRefreshState) {
       setIsRefreshing(true);
     }
-    
+
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
@@ -284,7 +267,7 @@ const Devices = () => {
         setIsLoading(false);
         return;
       }
-      
+
       const response = await devicesAPI.getAll();
       setDevices(response.data);
     } catch (error: any) {
@@ -306,8 +289,8 @@ const Devices = () => {
   useEffect(() => {
     fetchDevices();
   }, []);
-  
-  const filteredDevices = devices.filter(device => 
+
+  const filteredDevices = devices.filter(device =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.code.includes(searchQuery)
   );
@@ -325,10 +308,10 @@ const Devices = () => {
             Manage and monitor all your connected AIoT devices
           </p>
         </div>
-        
+
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
             onClick={() => fetchDevices(true)}
             disabled={isRefreshing}
@@ -343,7 +326,7 @@ const Devices = () => {
           </Link>
         </div>
       </div>
-      
+
       {/* Search */}
       <div className="relative mb-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -355,7 +338,7 @@ const Devices = () => {
           className="pl-12"
         />
       </div>
-      
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8 animate-fade-up" style={{ animationDelay: "0.15s" }}>
         <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
@@ -371,7 +354,7 @@ const Devices = () => {
           <p className="text-sm text-muted-foreground">Offline</p>
         </div>
       </div>
-      
+
       {/* Loading State */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-16">
@@ -384,9 +367,9 @@ const Devices = () => {
           {filteredDevices.length > 0 ? (
             <div className="grid gap-4">
               {filteredDevices.map((device, index) => (
-                <DeviceCard 
-                  key={device._id} 
-                  device={device} 
+                <DeviceCard
+                  key={device._id}
+                  device={device}
                   delay={`${0.2 + index * 0.1}s`}
                   onClick={() => handleDeviceClick(device)}
                   onToggleStatus={handleToggleStatus}
@@ -401,7 +384,7 @@ const Devices = () => {
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-2">No devices found</h3>
               <p className="text-muted-foreground mb-6">
-                {searchQuery 
+                {searchQuery
                   ? "Try adjusting your search query"
                   : "Start by adding your first AIoT device"
                 }

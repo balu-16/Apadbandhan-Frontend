@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Smartphone, 
+import {
+  Smartphone,
   Search,
   QrCode,
   Plus,
@@ -263,7 +263,7 @@ const AllDevices = () => {
               placeholder="Number of devices"
               value={generateCount}
               onChange={(e) => setGenerateCount(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               className="max-w-xs"
             />
             <Button onClick={handleGenerate} disabled={isGenerating} className="gap-2">

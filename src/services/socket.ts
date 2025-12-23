@@ -25,8 +25,12 @@ class SocketService {
       reconnectionAttempts: 10,
     });
 
-    this.socket.on('connect', () => console.log('🔌 WebSocket connected'));
-    this.socket.on('disconnect', (r) => console.log('🔌 Disconnected:', r));
+    this.socket.on('connect', () => {
+      if (import.meta.env.DEV) console.log('🔌 WebSocket connected');
+    });
+    this.socket.on('disconnect', (r) => {
+      if (import.meta.env.DEV) console.log('🔌 Disconnected:', r);
+    });
 
     Object.values(WS_EVENTS).forEach((event) => {
       this.socket?.on(event, (data) => {
