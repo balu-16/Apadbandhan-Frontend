@@ -21,10 +21,11 @@ import {
   CheckCircle,
   Plus,
   Trash2,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { devicesAPI } from "@/services/api";
+import { devicesAPI, qrCodesAPI } from "@/services/api";
 import QRScanner from "@/components/QRScanner";
 
 interface FamilyMember {
@@ -61,7 +62,11 @@ const AddDevice = () => {
   
   // Step 1: QR Scanner
   const [deviceCode, setDeviceCode] = useState("");
+  const [manualCode, setManualCode] = useState("");
   const [manualEntry, setManualEntry] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [isCodeValid, setIsCodeValid] = useState(false);
   
   // Step 2: Device Name
   const [deviceName, setDeviceName] = useState("");
@@ -79,12 +84,93 @@ const AddDevice = () => {
     termInsurance: "",
   });
 
-  const handleQRScanSuccess = (code: string) => {
-    setDeviceCode(code);
-    toast({
-      title: "QR Code Scanned!",
-      description: `Device code: ${code.match(/.{1,4}/g)?.join(" ")}`,
-    });
+  // Validate device code against database
+  const validateDeviceCode = async (code: string): Promise<boolean> => {
+    if (code.length !== 16) {
+      setValidationError("Device code must be exactly 16 digits");
+      return false;
+    }
+
+    setIsValidating(true);
+    setValidationError(null);
+
+    try {
+      const response = await qrCodesAPI.validateCode(code);
+      const data = response.data;
+
+      if (data.valid) {
+        // Code is valid and available
+        setIsCodeValid(true);
+        toast({
+          title: "Valid Device Code!",
+          description: `Device code: ${code.match(/.{1,4}/g)?.join(" ")}`,
+        });
+        return true;
+      } else {
+        // Code is invalid or not available
+        setValidationError(data.message || "Invalid device QR code");
+        toast({
+          title: "Invalid QR Code",
+          description: data.message || "This device code is not valid.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    } catch (error: any) {
+      console.error('Validation error:', error);
+      const errorMessage = error.response?.data?.message || "Invalid device QR code. Please scan a valid device.";
+      setValidationError(errorMessage);
+      toast({
+        title: "Invalid QR Code",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleQRScanSuccess = async (code: string) => {
+    // First check if it's 16 digits
+    if (code.length !== 16) {
+      setValidationError("Scanned code must be exactly 16 digits");
+      toast({
+        title: "Invalid QR Code",
+        description: "The scanned code is not a valid 16-digit device code.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate against database
+    const isValid = await validateDeviceCode(code);
+    if (isValid) {
+      setDeviceCode(code);
+    }
+  };
+
+  const handleManualCodeSubmit = async () => {
+    if (manualCode.length !== 16) {
+      setValidationError("Please enter all 16 digits");
+      return;
+    }
+
+    const isValid = await validateDeviceCode(manualCode);
+    if (isValid) {
+      setDeviceCode(manualCode);
+    } else {
+      // Keep the code so user can see what was entered
+      setManualCode("");
+    }
+  };
+
+  const resetDeviceCode = () => {
+    setDeviceCode("");
+    setManualCode("");
+    setIsCodeValid(false);
+    setValidationError(null);
+    setManualEntry(false);
   };
 
   const goToStep = (step: number) => {
@@ -169,7 +255,8 @@ const AddDevice = () => {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return deviceCode.length === 16;
+        // Must have 16 digits AND be validated against database
+        return deviceCode.length === 16 && isCodeValid;
       case 2:
         return deviceName.trim().length > 0;
       case 3:
@@ -299,8 +386,16 @@ const AddDevice = () => {
                 </p>
               </div>
 
-              {!deviceCode ? (
+              {!isCodeValid ? (
                 <div className="space-y-6">
+                  {/* Validation Error Message */}
+                  {validationError && (
+                    <div className="max-w-md mx-auto flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive animate-fade-up">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      <p className="text-sm">{validationError}</p>
+                    </div>
+                  )}
+
                   {!manualEntry ? (
                     <>
                       <QRScanner 
@@ -308,9 +403,20 @@ const AddDevice = () => {
                         onScanError={(error) => console.error('Scan error:', error)}
                       />
                       
+                      {/* Validating indicator */}
+                      {isValidating && (
+                        <div className="flex items-center justify-center gap-2 text-primary">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Verifying device code...</span>
+                        </div>
+                      )}
+                      
                       <div className="text-center">
                         <button
-                          onClick={() => setManualEntry(true)}
+                          onClick={() => {
+                            setManualEntry(true);
+                            setValidationError(null);
+                          }}
                           className="text-sm text-primary hover:underline"
                         >
                           Enter code manually instead
@@ -325,21 +431,54 @@ const AddDevice = () => {
                       <Input
                         type="text"
                         placeholder="0000 0000 0000 0000"
-                        value={deviceCode}
+                        value={manualCode}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, "").slice(0, 16);
-                          setDeviceCode(value);
+                          setManualCode(value);
+                          setValidationError(null);
                         }}
-                        className="text-lg font-mono tracking-wider text-center"
+                        className={cn(
+                          "text-lg font-mono tracking-wider text-center",
+                          validationError && "border-destructive focus-visible:ring-destructive"
+                        )}
                         maxLength={16}
+                        disabled={isValidating}
                       />
-                      <p className="text-sm text-muted-foreground mt-2 text-center">
-                        {deviceCode.length}/16 digits
+                      <p className={cn(
+                        "text-sm mt-2 text-center",
+                        manualCode.length === 16 ? "text-green-500" : "text-muted-foreground"
+                      )}>
+                        {manualCode.length}/16 digits
+                        {manualCode.length === 16 && " ✓"}
                       </p>
+                      
+                      {/* Verify Button */}
+                      <Button
+                        onClick={handleManualCodeSubmit}
+                        disabled={manualCode.length !== 16 || isValidating}
+                        className="w-full mt-4"
+                        variant="hero"
+                      >
+                        {isValidating ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                            Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-5 h-5 mr-2" />
+                            Verify Device Code
+                          </>
+                        )}
+                      </Button>
                       
                       <div className="text-center mt-4">
                         <button
-                          onClick={() => setManualEntry(false)}
+                          onClick={() => {
+                            setManualEntry(false);
+                            setManualCode("");
+                            setValidationError(null);
+                          }}
                           className="text-sm text-primary hover:underline"
                         >
                           Scan QR code instead
@@ -355,19 +494,17 @@ const AddDevice = () => {
                   </div>
                   
                   <div className="text-center animate-fade-up">
-                    <p className="text-sm text-muted-foreground mb-2">Device Code Captured</p>
+                    <p className="text-sm text-muted-foreground mb-2">Device Code Verified</p>
                     <p className="text-2xl font-mono font-bold text-primary tracking-wider">
                       {deviceCode.match(/.{1,4}/g)?.join(" ")}
                     </p>
+                    <p className="text-sm text-green-500 mt-2">✓ Valid device found in our system</p>
                     
                     <button
-                      onClick={() => {
-                        setDeviceCode("");
-                        setManualEntry(false);
-                      }}
+                      onClick={resetDeviceCode}
                       className="mt-4 text-sm text-muted-foreground hover:text-foreground"
                     >
-                      Scan again
+                      Scan a different device
                     </button>
                   </div>
                 </div>

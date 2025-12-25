@@ -32,6 +32,7 @@ import {
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import UserDetailsModal from "@/components/admin/UserDetailsModal";
 
 interface User {
   _id: string;
@@ -52,6 +53,10 @@ const UsersManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // User details modal state
+  const [viewUser, setViewUser] = useState<User | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   
   // Form fields
   const [newUser, setNewUser] = useState({
@@ -281,7 +286,14 @@ const UsersManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow key={user._id || user.id}>
+                    <TableRow 
+                      key={user._id || user.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => {
+                        setViewUser(user);
+                        setIsViewDialogOpen(true);
+                      }}
+                    >
                       <TableCell className="font-medium">{user.fullName}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -315,7 +327,8 @@ const UsersManagement = () => {
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedUser(user);
                             setIsDeleteDialogOpen(true);
                           }}
@@ -363,6 +376,13 @@ const UsersManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* User Details Modal */}
+      <UserDetailsModal
+        user={viewUser}
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+      />
     </div>
   );
 };

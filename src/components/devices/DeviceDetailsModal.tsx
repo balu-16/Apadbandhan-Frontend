@@ -1,10 +1,27 @@
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect, useState, useMemo } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
+// Component to fit map bounds when locations change
+const FitBoundsToMarkers = ({ locations }: { locations: [number, number][] }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (locations.length > 1) {
+      const bounds = L.latLngBounds(locations);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else if (locations.length === 1) {
+      map.setView(locations[0], 13);
+    }
+  }, [locations, map]);
+  
+  return null;
+};
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -23,8 +40,10 @@ import {
   Wifi,
   WifiOff,
   Navigation,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { deviceLocationsAPI } from "@/services/api";
 
 // Fix for default marker icons in Leaflet with Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -34,7 +53,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-// Custom marker icon
+// Custom marker icon for waypoints
 const deviceIcon = new L.Icon({
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -44,6 +63,50 @@ const deviceIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
+// Start point icon (green)
+const startIcon = new L.DivIcon({
+  className: 'custom-start-marker',
+  html: `<div style="
+    width: 24px; 
+    height: 24px; 
+    background: #22c55e; 
+    border: 3px solid white; 
+    border-radius: 50%; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  "></div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+// End point icon (arrow/destination)
+const endIcon = new L.DivIcon({
+  className: 'custom-end-marker',
+  html: `<div style="
+    width: 0; 
+    height: 0; 
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 24px solid #ef4444;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    transform: rotate(0deg);
+  "></div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+});
+
+interface LocationHistory {
+  _id: string;
+  deviceId: string;
+  latitude: number;
+  longitude: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  speed?: number;
+  heading?: number;
+  recordedAt: string;
+}
 
 interface EmergencyContact {
   name: string;
@@ -95,12 +158,103 @@ interface DeviceDetailsModalProps {
 
 const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalProps) => {
   const [activeTab, setActiveTab] = useState("info");
+  const [locationHistory, setLocationHistory] = useState<LocationHistory[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
 
-  if (!device) return null;
+  // Calculate derived values - must be before any early returns
+  const hasLocation = device?.location?.latitude && device?.location?.longitude;
+  const hasLocationHistory = locationHistory.length > 0;
+  
+  const lat = hasLocationHistory 
+    ? locationHistory[locationHistory.length - 1].latitude 
+    : (device?.location?.latitude || 20.5937);
+  const lng = hasLocationHistory 
+    ? locationHistory[locationHistory.length - 1].longitude 
+    : (device?.location?.longitude || 78.9629);
 
-  const hasLocation = device.location?.latitude && device.location?.longitude;
-  const lat = device.location?.latitude || 20.5937; // Default to India center
-  const lng = device.location?.longitude || 78.9629;
+  // Create route coordinates for polyline - memoize to avoid unnecessary recalculations
+  const routeCoordinates: [number, number][] = useMemo(() => 
+    locationHistory.map(loc => [loc.latitude, loc.longitude]),
+    [locationHistory]
+  );
+
+  // Map key to force re-render when locations change
+  const mapKey = useMemo(() => 
+    `map-${locationHistory.length}-${lat}-${lng}`,
+    [locationHistory.length, lat, lng]
+  );
+
+  // Extract device ID properly - handle both _id and id formats
+  const getDeviceId = (): string | null => {
+    if (!device) return null;
+    // Try _id first (MongoDB format), then id (transformed format)
+    const id = device._id || device.id;
+    if (!id) return null;
+    // If it's an object with $oid (MongoDB extended JSON), extract it
+    if (typeof id === 'object' && (id as any).$oid) {
+      return (id as any).$oid;
+    }
+    // If it's an object with toString method (ObjectId), convert it
+    if (typeof id === 'object' && typeof (id as any).toString === 'function') {
+      return (id as any).toString();
+    }
+    // Otherwise return as string
+    return String(id);
+  };
+
+  // Single effect to fetch location history when modal opens
+  useEffect(() => {
+    if (!open || !device) {
+      // Reset location history when modal closes
+      if (!open) {
+        setLocationHistory([]);
+        setIsLoadingLocations(false);
+      }
+      return;
+    }
+
+    const deviceId = getDeviceId();
+    console.log('[DeviceModal] Device:', device);
+    console.log('[DeviceModal] Extracted deviceId:', deviceId);
+    
+    if (!deviceId) {
+      console.log('[DeviceModal] No deviceId found, skipping fetch');
+      return;
+    }
+
+    // Fetch location history
+    const fetchHistory = async () => {
+      console.log('[DeviceModal] Fetching location history for:', deviceId);
+      setIsLoadingLocations(true);
+      
+      try {
+        const response = await deviceLocationsAPI.getByDevice(deviceId, { limit: 100 });
+        console.log('[DeviceModal] API Response:', response);
+        console.log('[DeviceModal] Response data:', response.data);
+        
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          // Sort by recordedAt ascending (oldest first for route)
+          const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) => 
+            new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
+          );
+          console.log('[DeviceModal] Setting', sortedLocations.length, 'locations');
+          setLocationHistory(sortedLocations);
+        } else {
+          console.log('[DeviceModal] No locations in response, response.data:', response.data);
+          setLocationHistory([]);
+        }
+      } catch (error: any) {
+        console.error('[DeviceModal] Failed to fetch location history:', error);
+        console.error('[DeviceModal] Error response:', error.response?.data);
+        console.error('[DeviceModal] Error status:', error.response?.status);
+        setLocationHistory([]);
+      } finally {
+        setIsLoadingLocations(false);
+      }
+    };
+
+    fetchHistory();
+  }, [open, device?._id, device?.id]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -109,6 +263,16 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
       timeStyle: "short",
     });
   };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Early return AFTER all hooks
+  if (!device) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,6 +303,9 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
               {device.status || "offline"}
             </Badge>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            View device details, location history, and map for {device.name}
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -295,11 +462,17 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
           {/* Map Tab */}
           <TabsContent value="map" className="mt-4">
             <div className="rounded-xl overflow-hidden border border-border">
-              {hasLocation ? (
+              {isLoadingLocations ? (
+                <div className="h-[400px] w-full flex flex-col items-center justify-center bg-muted/30">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                  <p className="text-muted-foreground">Loading location data...</p>
+                </div>
+              ) : hasLocationHistory || hasLocation ? (
                 <div className="h-[400px] w-full">
                   <MapContainer
+                    key={mapKey}
                     center={[lat, lng]}
-                    zoom={15}
+                    zoom={10}
                     style={{ height: "100%", width: "100%" }}
                     scrollWheelZoom={true}
                   >
@@ -307,21 +480,152 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                    <Marker position={[lat, lng]} icon={deviceIcon}>
-                      <Popup>
-                        <div className="text-center">
-                          <strong>{device.name}</strong>
-                          <br />
-                          <span className="text-sm">{device.code}</span>
-                          {device.location?.address && (
-                            <>
-                              <br />
-                              <span className="text-xs text-gray-600">{device.location.address}</span>
-                            </>
-                          )}
-                        </div>
-                      </Popup>
-                    </Marker>
+                    
+                    {/* Auto-fit bounds to markers */}
+                    {routeCoordinates.length > 0 && (
+                      <FitBoundsToMarkers locations={routeCoordinates} />
+                    )}
+                    
+                    {/* Route line connecting all points */}
+                    {locationHistory.length > 1 && (
+                      <Polyline
+                        positions={routeCoordinates}
+                        color="#3b82f6"
+                        weight={4}
+                        opacity={0.8}
+                        dashArray="10, 5"
+                      />
+                    )}
+
+                    {/* Start Point Marker (Green Circle) - Show for first location in history */}
+                    {locationHistory.length > 0 && (
+                      <Marker 
+                        position={[locationHistory[0].latitude, locationHistory[0].longitude]} 
+                        icon={startIcon}
+                      >
+                        <Tooltip permanent={false} direction="top" offset={[0, -10]}>
+                          <div className="text-xs font-mono">
+                            🟢 Start: {locationHistory[0].latitude.toFixed(4)}, {locationHistory[0].longitude.toFixed(4)}
+                          </div>
+                        </Tooltip>
+                        <Popup>
+                          <div className="text-center min-w-[150px]">
+                            <div className="font-bold text-green-600 mb-1">🟢 Start Point</div>
+                            <div className="text-sm font-medium">{locationHistory[0].city || 'Unknown'}</div>
+                            {locationHistory[0].address && (
+                              <div className="text-xs text-gray-600">{locationHistory[0].address}</div>
+                            )}
+                            <div className="text-xs text-gray-500 mt-1">
+                              Lat: {locationHistory[0].latitude.toFixed(6)}<br/>
+                              Lng: {locationHistory[0].longitude.toFixed(6)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatTime(locationHistory[0].recordedAt)}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
+
+                    {/* Waypoint Markers - Middle points between start and end */}
+                    {locationHistory.length > 2 && locationHistory.slice(1, -1).map((loc, index) => (
+                      <CircleMarker
+                        key={loc._id}
+                        center={[loc.latitude, loc.longitude]}
+                        radius={8}
+                        fillColor="#3b82f6"
+                        fillOpacity={0.9}
+                        color="white"
+                        weight={3}
+                      >
+                        <Tooltip permanent={false} direction="top" offset={[0, -5]}>
+                          <div className="text-xs font-mono">
+                            📍 {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                          </div>
+                        </Tooltip>
+                        <Popup>
+                          <div className="text-center min-w-[150px]">
+                            <div className="font-bold text-blue-600 mb-1">📍 Waypoint {index + 1}</div>
+                            <div className="text-sm font-medium">{loc.city || 'Unknown'}</div>
+                            {loc.address && (
+                              <div className="text-xs text-gray-600">{loc.address}</div>
+                            )}
+                            <div className="text-xs text-gray-500 mt-1">
+                              Lat: {loc.latitude.toFixed(6)}<br/>
+                              Lng: {loc.longitude.toFixed(6)}
+                            </div>
+                            {loc.speed && (
+                              <div className="text-xs text-gray-500">Speed: {loc.speed} km/h</div>
+                            )}
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatTime(loc.recordedAt)}
+                            </div>
+                          </div>
+                        </Popup>
+                      </CircleMarker>
+                    ))}
+
+                    {/* End Point Marker (Arrow/Destination) - Show only if more than 1 location */}
+                    {locationHistory.length > 1 && (
+                      <Marker 
+                        position={[
+                          locationHistory[locationHistory.length - 1].latitude, 
+                          locationHistory[locationHistory.length - 1].longitude
+                        ]} 
+                        icon={endIcon}
+                      >
+                        <Tooltip permanent={false} direction="top" offset={[0, -20]}>
+                          <div className="text-xs font-mono">
+                            🏁 End: {locationHistory[locationHistory.length - 1].latitude.toFixed(4)}, {locationHistory[locationHistory.length - 1].longitude.toFixed(4)}
+                          </div>
+                        </Tooltip>
+                        <Popup>
+                          <div className="text-center min-w-[150px]">
+                            <div className="font-bold text-red-600 mb-1">🏁 Current Location</div>
+                            <div className="text-sm font-medium">
+                              {locationHistory[locationHistory.length - 1].city || 'Unknown'}
+                            </div>
+                            {locationHistory[locationHistory.length - 1].address && (
+                              <div className="text-xs text-gray-600">
+                                {locationHistory[locationHistory.length - 1].address}
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-500 mt-1">
+                              Lat: {locationHistory[locationHistory.length - 1].latitude.toFixed(6)}<br/>
+                              Lng: {locationHistory[locationHistory.length - 1].longitude.toFixed(6)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {formatTime(locationHistory[locationHistory.length - 1].recordedAt)}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
+
+                    {/* Fallback: Single marker using device.location when no location history */}
+                    {locationHistory.length === 0 && hasLocation && (
+                      <Marker position={[lat, lng]} icon={deviceIcon}>
+                        <Tooltip permanent={false} direction="top" offset={[0, -35]}>
+                          <div className="text-xs font-mono">
+                            📍 {lat.toFixed(4)}, {lng.toFixed(4)}
+                          </div>
+                        </Tooltip>
+                        <Popup>
+                          <div className="text-center min-w-[150px]">
+                            <div className="font-bold text-blue-600 mb-1">📍 Current Location</div>
+                            <div className="text-sm font-medium">{device.name}</div>
+                            <div className="text-xs text-gray-500">{device.code}</div>
+                            {device.location?.address && (
+                              <div className="text-xs text-gray-600 mt-1">{device.location.address}</div>
+                            )}
+                            <div className="text-xs text-gray-500 mt-1">
+                              Lat: {lat.toFixed(6)}<br/>
+                              Lng: {lng.toFixed(6)}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
                   </MapContainer>
                 </div>
               ) : (
@@ -335,15 +639,76 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
               )}
             </div>
 
+            {/* Route Legend - Show when there are multiple locations */}
+            {locationHistory.length > 1 && (
+              <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white shadow"></div>
+                  <span className="text-muted-foreground">Start</span>
+                </div>
+                {locationHistory.length > 2 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow"></div>
+                    <span className="text-muted-foreground">Waypoints</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[12px] border-l-transparent border-r-transparent border-b-red-500"></div>
+                  <span className="text-muted-foreground">Current</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-1 bg-blue-500 rounded" style={{ borderStyle: 'dashed' }}></div>
+                  <span className="text-muted-foreground">Route</span>
+                </div>
+              </div>
+            )}
+
+            {/* Location History List - Show when there are locations */}
+            {locationHistory.length > 0 && (
+              <div className="mt-4 bg-muted/30 rounded-xl p-4">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  Location History ({locationHistory.length} points)
+                </h4>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {[...locationHistory].reverse().map((loc, index) => (
+                    <div 
+                      key={loc._id} 
+                      className={cn(
+                        "flex items-center justify-between p-2 rounded-lg text-sm",
+                        index === 0 ? "bg-red-500/10" : index === locationHistory.length - 1 ? "bg-green-500/10" : "bg-background/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">
+                          {index === 0 ? "🏁" : index === locationHistory.length - 1 ? "🟢" : "📍"}
+                        </span>
+                        <div>
+                          <p className="font-medium">{loc.city || loc.address || 'Unknown location'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">{formatDate(loc.recordedAt)}</p>
+                        {loc.speed && <p className="text-xs text-blue-500">{loc.speed} km/h</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Location Details */}
-            {hasLocation && (
+            {(hasLocation || hasLocationHistory) && (
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div className="bg-muted/30 rounded-xl p-4">
-                  <p className="text-sm text-muted-foreground mb-1">Latitude</p>
+                  <p className="text-sm text-muted-foreground mb-1">Current Latitude</p>
                   <p className="font-mono text-lg">{lat.toFixed(6)}</p>
                 </div>
                 <div className="bg-muted/30 rounded-xl p-4">
-                  <p className="text-sm text-muted-foreground mb-1">Longitude</p>
+                  <p className="text-sm text-muted-foreground mb-1">Current Longitude</p>
                   <p className="font-mono text-lg">{lng.toFixed(6)}</p>
                 </div>
               </div>

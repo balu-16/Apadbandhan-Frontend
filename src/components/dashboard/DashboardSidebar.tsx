@@ -35,7 +35,7 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded }: DashboardSidebarProps) 
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/");
   };
 
   const isActive = (path: string) => {

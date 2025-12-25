@@ -186,6 +186,19 @@ export const adminAPI = {
 
   // Statistics
   getStats: () => api.get('/admin/stats'),
+
+  // Login logs
+  getUserLoginLogs: (userId: string, limit?: number) => 
+    api.get(`/admin/users/${userId}/login-logs`, { params: { limit } }),
+  getAdminLoginLogs: (userId: string, limit?: number) => 
+    api.get(`/admin/admins/${userId}/login-logs`, { params: { limit } }),
+  getAllUserLoginLogs: (limit?: number) => 
+    api.get('/admin/login-logs/users', { params: { limit } }),
+  getAllAdminLoginLogs: (limit?: number) => 
+    api.get('/admin/login-logs/admins', { params: { limit } }),
+
+  // QR code lookup
+  getQrCodeByDeviceCode: (deviceCode: string) => api.get(`/admin/qrcode/${deviceCode}`),
 };
 
 // QR Codes API

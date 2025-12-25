@@ -48,7 +48,7 @@ const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/");
   };
 
   return (

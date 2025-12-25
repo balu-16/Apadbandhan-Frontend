@@ -14,12 +14,12 @@ import {
   User,
   Phone,
   Mail,
-  Battery,
   MapPin,
   Activity
 } from "lucide-react";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import DeviceDetailsPopup from "@/components/admin/DeviceDetailsPopup";
 
 interface AssignedUser {
   id: string;
@@ -73,6 +73,11 @@ const AllDevices = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [generateCount, setGenerateCount] = useState("10");
+
+  // Device details popup state
+  const [selectedDevice, setSelectedDevice] = useState<QrCodeDevice | RegisteredDevice | null>(null);
+  const [selectedDeviceType, setSelectedDeviceType] = useState<"qrcode" | "registered">("qrcode");
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -167,12 +172,6 @@ const AllDevices = () => {
       case 'assigned': return 'bg-orange-500/20 text-orange-500';
       default: return 'bg-gray-500/20 text-gray-500';
     }
-  };
-
-  const getBatteryColor = (level: number) => {
-    if (level >= 60) return 'text-green-500';
-    if (level >= 30) return 'text-yellow-500';
-    return 'text-red-500';
   };
 
   if (isLoading) {
@@ -312,7 +311,15 @@ const AllDevices = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredRegisteredDevices.map((device) => (
-                    <Card key={device._id || device.id} className="bg-muted/30 border-border/50">
+                    <Card 
+                      key={device._id || device.id} 
+                      className="bg-muted/30 border-border/50 cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all duration-200"
+                      onClick={() => {
+                        setSelectedDevice(device);
+                        setSelectedDeviceType("registered");
+                        setIsDetailsOpen(true);
+                      }}
+                    >
                       <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row gap-4 items-start">
                           <div className="flex-shrink-0">
@@ -334,12 +341,6 @@ const AllDevices = () => {
                               <code className="bg-muted px-2 py-1 rounded font-mono text-xs">
                                 {device.code}
                               </code>
-                              <div className="flex items-center gap-1">
-                                <Battery className={`h-4 w-4 ${getBatteryColor(device.batteryLevel || 0)}`} />
-                                <span className={getBatteryColor(device.batteryLevel || 0)}>
-                                  {device.batteryLevel || 0}%
-                                </span>
-                              </div>
                               {device.location?.latitude && (
                                 <div className="flex items-center gap-1">
                                   <MapPin className="h-4 w-4" />
@@ -377,7 +378,15 @@ const AllDevices = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredQrCodes.map((device) => (
-                    <Card key={device._id || device.id} className="bg-muted/30 border-border/50">
+                    <Card 
+                      key={device._id || device.id} 
+                      className="bg-muted/30 border-border/50 cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all duration-200"
+                      onClick={() => {
+                        setSelectedDevice(device);
+                        setSelectedDeviceType("qrcode");
+                        setIsDetailsOpen(true);
+                      }}
+                    >
                       <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row gap-4">
                           <div className="flex-shrink-0">
@@ -431,6 +440,14 @@ const AllDevices = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Device Details Popup */}
+      <DeviceDetailsPopup
+        device={selectedDevice}
+        deviceType={selectedDeviceType}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+      />
     </div>
   );
 };

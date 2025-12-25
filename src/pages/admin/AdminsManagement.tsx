@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import AdminDetailsModal from "@/components/admin/AdminDetailsModal";
 
 interface Admin {
   _id: string;
@@ -52,6 +53,10 @@ const AdminsManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Admin details modal state
+  const [viewAdmin, setViewAdmin] = useState<Admin | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   
   // Form fields
   const [newAdmin, setNewAdmin] = useState({
@@ -281,7 +286,14 @@ const AdminsManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredAdmins.map((admin) => (
-                    <TableRow key={admin._id || admin.id}>
+                    <TableRow 
+                      key={admin._id || admin.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => {
+                        setViewAdmin(admin);
+                        setIsViewDialogOpen(true);
+                      }}
+                    >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <Shield className="h-4 w-4 text-orange-500" />
@@ -325,7 +337,8 @@ const AdminsManagement = () => {
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedAdmin(admin);
                             setIsDeleteDialogOpen(true);
                           }}
@@ -373,6 +386,13 @@ const AdminsManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Admin Details Modal */}
+      <AdminDetailsModal
+        admin={viewAdmin}
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+      />
     </div>
   );
 };
