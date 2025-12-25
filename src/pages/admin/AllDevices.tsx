@@ -392,7 +392,7 @@ const AllDevices = () => {
                           <div className="flex-shrink-0">
                             <div className="w-20 h-20 bg-white rounded-lg p-1 flex items-center justify-center">
                               <img
-                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}${device.qrImageUrl}`}
+                                src={`${import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.onrender.com/api'}${device.qrImageUrl}`}
                                 alt={`QR ${device.deviceCode}`}
                                 className="w-full h-full object-contain"
                                 onError={(e) => {
