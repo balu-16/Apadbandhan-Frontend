@@ -214,39 +214,26 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
     }
 
     const deviceId = getDeviceId();
-    console.log('[DeviceModal] Device:', device);
-    console.log('[DeviceModal] Extracted deviceId:', deviceId);
-    
-    if (!deviceId) {
-      console.log('[DeviceModal] No deviceId found, skipping fetch');
-      return;
-    }
+    if (!deviceId) return;
 
     // Fetch location history
     const fetchHistory = async () => {
-      console.log('[DeviceModal] Fetching location history for:', deviceId);
       setIsLoadingLocations(true);
       
       try {
         const response = await deviceLocationsAPI.getByDevice(deviceId, { limit: 100 });
-        console.log('[DeviceModal] API Response:', response);
-        console.log('[DeviceModal] Response data:', response.data);
         
         if (response.data && Array.isArray(response.data) && response.data.length > 0) {
           // Sort by recordedAt ascending (oldest first for route)
           const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) => 
             new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
           );
-          console.log('[DeviceModal] Setting', sortedLocations.length, 'locations');
           setLocationHistory(sortedLocations);
         } else {
-          console.log('[DeviceModal] No locations in response, response.data:', response.data);
           setLocationHistory([]);
         }
       } catch (error: any) {
-        console.error('[DeviceModal] Failed to fetch location history:', error);
-        console.error('[DeviceModal] Error response:', error.response?.data);
-        console.error('[DeviceModal] Error status:', error.response?.status);
+        console.error('Failed to fetch location history:', error.response?.data || error.message);
         setLocationHistory([]);
       } finally {
         setIsLoadingLocations(false);
