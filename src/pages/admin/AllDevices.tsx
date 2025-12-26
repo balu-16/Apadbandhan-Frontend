@@ -15,11 +15,22 @@ import {
   Phone,
   Mail,
   MapPin,
-  Activity
+  Activity,
+  Trash2
 } from "lucide-react";
-import { adminAPI } from "@/services/api";
+import { adminAPI, qrCodesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import DeviceDetailsPopup from "@/components/admin/DeviceDetailsPopup";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AssignedUser {
   id: string;
@@ -79,7 +90,16 @@ const AllDevices = () => {
   const [selectedDeviceType, setSelectedDeviceType] = useState<"qrcode" | "registered">("qrcode");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deviceToDelete, setDeviceToDelete] = useState<QrCodeDevice | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const { toast } = useToast();
+
+  // API base URL for QR images
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.onrender.com/api';
 
   useEffect(() => {
     fetchData();
@@ -141,6 +161,50 @@ const AllDevices = () => {
     if (e.key === 'Enter') {
       handleGenerate();
     }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, device: QrCodeDevice) => {
+    e.stopPropagation(); // Prevent opening the details popup
+    setDeviceToDelete(device);
+    setDeleteConfirmText("");
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deviceToDelete || deleteConfirmText !== "confirm delete") {
+      toast({
+        title: "Error",
+        description: "Please type 'confirm delete' to proceed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await qrCodesAPI.delete(deviceToDelete._id || deviceToDelete.id);
+      toast({
+        title: "Success",
+        description: `Device ${deviceToDelete.deviceCode} deleted successfully`,
+      });
+      setDeleteDialogOpen(false);
+      setDeviceToDelete(null);
+      setDeleteConfirmText("");
+      fetchData(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to delete device",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Get QR image URL
+  const getQrImageUrl = (deviceCode: string) => {
+    return `${apiBaseUrl}/qrcodes/image/${deviceCode}`;
   };
 
   const filteredQrCodes = qrCodes.filter(device =>
@@ -311,8 +375,8 @@ const AllDevices = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredRegisteredDevices.map((device) => (
-                    <Card 
-                      key={device._id || device.id} 
+                    <Card
+                      key={device._id || device.id}
                       className="bg-muted/30 border-border/50 cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all duration-200"
                       onClick={() => {
                         setSelectedDevice(device);
@@ -378,25 +442,36 @@ const AllDevices = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredQrCodes.map((device) => (
-                    <Card 
-                      key={device._id || device.id} 
-                      className="bg-muted/30 border-border/50 cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all duration-200"
+                    <Card
+                      key={device._id || device.id}
+                      className="bg-muted/30 border-border/50 cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 relative group"
                       onClick={() => {
                         setSelectedDevice(device);
                         setSelectedDeviceType("qrcode");
                         setIsDetailsOpen(true);
                       }}
                     >
+                      {/* Delete Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 z-10"
+                        onClick={(e) => handleDeleteClick(e, device)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                       <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row gap-4">
                           <div className="flex-shrink-0">
-                            <div className="w-20 h-20 bg-white rounded-lg p-1 flex items-center justify-center">
+                            <div className="w-20 h-20 bg-white rounded-lg p-1 flex items-center justify-center overflow-hidden">
                               <img
-                                src={`${import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.onrender.com/api'}${device.qrImageUrl}`}
+                                src={getQrImageUrl(device.deviceCode)}
                                 alt={`QR ${device.deviceCode}`}
                                 className="w-full h-full object-contain"
                                 onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  const target = e.target as HTMLImageElement;
+                                  target.onerror = null;
+                                  target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='1.5'%3E%3Crect x='3' y='3' width='7' height='7'/%3E%3Crect x='14' y='3' width='7' height='7'/%3E%3Crect x='3' y='14' width='7' height='7'/%3E%3Crect x='14' y='14' width='7' height='7'/%3E%3C/svg%3E";
                                 }}
                               />
                             </div>
@@ -447,7 +522,75 @@ const AllDevices = () => {
         deviceType={selectedDeviceType}
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
+        onDelete={(device) => {
+          setIsDetailsOpen(false);
+          setDeviceToDelete(device as QrCodeDevice);
+          setDeleteConfirmText("");
+          setDeleteDialogOpen(true);
+        }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Delete Device
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4">
+              <p>
+                Are you sure you want to delete the device{" "}
+                <strong className="text-foreground">{deviceToDelete?.deviceName}</strong> with code{" "}
+                <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono text-sm">
+                  {deviceToDelete?.deviceCode}
+                </code>
+                ?
+              </p>
+              <p className="text-destructive font-medium">
+                This action cannot be reversed.
+              </p>
+              <div className="space-y-2 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Type <strong className="text-foreground">confirm delete</strong> to proceed:
+                </p>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="confirm delete"
+                  className="font-mono"
+                  autoFocus
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteConfirmText("");
+              setDeviceToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleteConfirmText !== "confirm delete" || isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Device
+                </>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

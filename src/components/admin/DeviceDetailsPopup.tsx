@@ -18,6 +18,7 @@ import {
   CheckCircle,
   X,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -67,9 +68,10 @@ interface DeviceDetailsPopupProps {
   deviceType: "qrcode" | "registered";
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDelete?: (device: QrCodeDevice | RegisteredDevice) => void;
 }
 
-const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange }: DeviceDetailsPopupProps) => {
+const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }: DeviceDetailsPopupProps) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [isLoadingQr, setIsLoadingQr] = useState(false);
 
@@ -138,15 +140,8 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange }: DeviceDe
     }
   };
 
-  // Get the QR image URL based on device type
+  // Get the QR image URL based on device type - always use device code for reliability
   const getQrImageUrl = () => {
-    if (isQrCode && qrDevice.qrImageUrl) {
-      return `${apiUrl}${qrDevice.qrImageUrl}`;
-    }
-    if (!isQrCode && qrCodeUrl) {
-      return `${apiUrl}${qrCodeUrl}`;
-    }
-    // Fallback: try to construct URL from device code
     const deviceCode = isQrCode ? qrDevice.deviceCode : regDevice.code;
     if (deviceCode) {
       return `${apiUrl}/qrcodes/image/${deviceCode}`;
@@ -156,18 +151,38 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange }: DeviceDe
 
   const qrImageUrl = getQrImageUrl();
 
+  const handleDelete = () => {
+    if (device && onDelete) {
+      onDelete(device);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0 [&>button]:hidden">
-        {/* Custom Close Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-4 z-10 rounded-full bg-muted/80 hover:bg-muted"
-          onClick={() => onOpenChange(false)}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        {/* Action Buttons */}
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          {/* Delete Button - Only for QR codes */}
+          {isQrCode && onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive"
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          {/* Close Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full bg-muted/80 hover:bg-muted"
+            onClick={() => onOpenChange(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500/20 via-purple-500/10 to-transparent p-6 pb-4">
@@ -224,7 +239,9 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange }: DeviceDe
                     alt={`QR Code for ${isQrCode ? qrDevice.deviceCode : regDevice.code}`}
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Crect x='3' y='3' width='7' height='7'/%3E%3Crect x='14' y='3' width='7' height='7'/%3E%3Crect x='3' y='14' width='7' height='7'/%3E%3Crect x='14' y='14' width='7' height='7'/%3E%3C/svg%3E";
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null; // Prevent infinite loop
+                      target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='1.5'%3E%3Crect x='3' y='3' width='7' height='7'/%3E%3Crect x='14' y='3' width='7' height='7'/%3E%3Crect x='3' y='14' width='7' height='7'/%3E%3Crect x='14' y='14' width='7' height='7'/%3E%3C/svg%3E";
                     }}
                   />
                 ) : (
@@ -352,6 +369,18 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange }: DeviceDe
                   </code>
                 </div>
               </div>
+
+              {/* Delete Button */}
+              {isQrCode && onDelete && (
+                <Button
+                  variant="destructive"
+                  className="w-full mt-4"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Device
+                </Button>
+              )}
             </div>
           </div>
         </div>
