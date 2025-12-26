@@ -111,7 +111,7 @@ const Home = () => {
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground mb-1">Quick Response</h4>
-                    <p className="text-muted-foreground">Average response time under 30 seconds from accident detection to dispatch</p>
+                    <p className="text-muted-foreground">Average response time under 3 seconds from accident detection to dispatch</p>
                   </div>
                 </div>
                 

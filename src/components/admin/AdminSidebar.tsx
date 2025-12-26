@@ -3,8 +3,7 @@ import { cn } from "@/lib/utils";
 import { 
   Home, 
   Users, 
-  Smartphone, 
-  Shield,
+  Smartphone,
   LogOut,
   UserCog
 } from "lucide-react";
@@ -66,9 +65,11 @@ const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps
         isExpanded ? "p-6" : "p-4 justify-center"
       )}>
         <Link to={basePath} className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-glow group-hover:shadow-glow-strong transition-shadow duration-300 flex-shrink-0">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
+          <img 
+            src="/logoAB.png" 
+            alt="Apadbandhav Logo" 
+            className="w-12 h-12 object-contain flex-shrink-0"
+          />
           {isExpanded && (
             <div className="flex flex-col">
               <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors duration-300 whitespace-nowrap overflow-hidden">

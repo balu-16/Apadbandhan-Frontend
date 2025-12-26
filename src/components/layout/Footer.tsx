@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, Mail, Phone, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
+import { Mail, Phone, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -9,10 +9,11 @@ const Footer = () => {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="relative">
-                <MapPin className="w-8 h-8 text-primary" />
-                <div className="absolute inset-0 w-2 h-2 bg-primary rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/3" />
-              </div>
+              <img 
+                src="/logoAB.png" 
+                alt="Apadbandhav Logo" 
+                className="w-12 h-12 object-contain"
+              />
               <span className="text-2xl font-bold text-foreground">
                 Apadbandhav
               </span>

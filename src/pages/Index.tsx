@@ -82,7 +82,7 @@ const Index = () => {
                     <Clock className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">{"<"}30s</p>
+                    <p className="text-2xl font-bold text-foreground">{"<"}3s</p>
                     <p className="text-sm text-muted-foreground">Response Time</p>
                   </div>
                 </div>

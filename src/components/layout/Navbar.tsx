@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, MapPin } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -16,16 +17,44 @@ const Navbar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    // Check if it's a hash link
+    if (path.includes('#')) {
+      e.preventDefault();
+      const hash = path.split('#')[1];
+      const basePath = path.split('#')[0] || '/';
+      
+      // If we're not on the home page, navigate first then scroll
+      if (location.pathname !== basePath && location.pathname !== '/') {
+        navigate(basePath);
+        // Wait for navigation then scroll
+        setTimeout(() => {
+          const element = document.getElementById(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      } else {
+        // Already on the page, just scroll
+        const element = document.getElementById(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <MapPin className="w-8 h-8 text-primary animate-pulse-glow" />
-              <div className="absolute inset-0 w-2 h-2 bg-primary rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/3" />
-            </div>
+            <img 
+              src="/logoAB.png" 
+              alt="Apadbandhav Logo" 
+              className="w-12 h-12 object-contain"
+            />
             <span className="text-xl lg:text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
               Apadbandhav
             </span>
@@ -37,6 +66,7 @@ const Navbar = () => {
               <Link
                 key={link.name}
                 to={link.path}
+                onClick={(e) => handleNavClick(e, link.path)}
                 className={`text-sm font-medium transition-colors duration-200 hover:text-primary ${
                   isActive(link.path) ? "text-primary" : "text-muted-foreground"
                 }`}
@@ -77,7 +107,10 @@ const Navbar = () => {
                       ? "text-primary bg-primary/10"
                       : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                   }`}
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => {
+                    handleNavClick(e, link.path);
+                    setIsOpen(false);
+                  }}
                 >
                   {link.name}
                 </Link>

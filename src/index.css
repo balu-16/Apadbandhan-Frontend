@@ -136,6 +136,11 @@
   body {
     @apply bg-background text-foreground font-poppins antialiased;
   }
+
+  /* Scroll margin for sections to account for fixed navbar */
+  section[id] {
+    scroll-margin-top: 5rem;
+  }
 }
 
 @layer components {

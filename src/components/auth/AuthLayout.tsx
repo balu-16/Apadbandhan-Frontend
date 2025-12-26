@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { MapPin } from "lucide-react";
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -18,10 +17,11 @@ const AuthLayout = ({ children, heroImage }: AuthLayoutProps) => {
           className="w-full h-full object-cover"
         />
         <div className="absolute top-8 left-8 z-20 flex items-center gap-3">
-          <div className="relative">
-            <MapPin className="w-10 h-10 text-primary animate-pulse-glow" />
-            <div className="absolute inset-0 w-3 h-3 bg-primary rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/3" />
-          </div>
+          <img 
+            src="/logoAB.png" 
+            alt="Apadbandhav Logo" 
+            className="w-12 h-12 object-contain"
+          />
           <span className="text-3xl font-bold text-foreground drop-shadow-lg">
             Apadbandhav
           </span>
@@ -38,10 +38,11 @@ const AuthLayout = ({ children, heroImage }: AuthLayoutProps) => {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <div className="relative">
-              <MapPin className="w-8 h-8 text-primary" />
-              <div className="absolute inset-0 w-2 h-2 bg-primary rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/3" />
-            </div>
+            <img 
+              src="/logoAB.png" 
+              alt="Apadbandhav Logo" 
+              className="w-12 h-12 object-contain"
+            />
             <span className="text-2xl font-bold text-foreground">
               Apadbandhav
             </span>

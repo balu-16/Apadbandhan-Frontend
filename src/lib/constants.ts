@@ -55,4 +55,4 @@ export const TIME_LABELS = {
 };
 
 // Response time display
-export const RESPONSE_TIME = '<30s';
+export const RESPONSE_TIME = '<3s';
