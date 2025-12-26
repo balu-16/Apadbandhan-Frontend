@@ -10,9 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  QrCode, 
-  Plus, 
+import {
+  QrCode,
+  Plus,
   Loader2,
   CheckCircle,
   Package,
@@ -96,7 +96,7 @@ const GenerateDevices = () => {
 
     setIsGenerating(true);
     setGeneratedDevices([]);
-    
+
     try {
       const response = await adminAPI.generateDevices(countNum);
       setGeneratedDevices(response.data.devices);
@@ -237,7 +237,7 @@ const GenerateDevices = () => {
 
       {/* Recently Generated Devices */}
       {generatedDevices.length > 0 && (
-        <Card className="bg-card border-border/50 border-green-500/30">
+        <Card className="bg-card border-green-500/30">
           <CardHeader>
             <CardTitle className="text-green-500 flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
@@ -319,11 +319,10 @@ const GenerateDevices = () => {
                           <code className="text-lg font-mono font-bold tracking-wider bg-muted px-3 py-1 rounded">
                             {qr.deviceCode}
                           </code>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            qr.status === 'available' 
-                              ? 'bg-green-500/20 text-green-500' 
-                              : 'bg-orange-500/20 text-orange-500'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${qr.status === 'available'
+                            ? 'bg-green-500/20 text-green-500'
+                            : 'bg-orange-500/20 text-orange-500'
+                            }`}>
                             {qr.status}
                           </span>
                         </div>
