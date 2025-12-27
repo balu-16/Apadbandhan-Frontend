@@ -79,7 +79,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
   const qrDevice = device as QrCodeDevice;
   const regDevice = device as RegisteredDevice;
 
-  const apiUrl = import.meta.env.VITE_API_URL || "https://apadbandhan-backend.onrender.com/api";
+  const apiUrl = import.meta.env.VITE_API_URL || "https://apadbandhan-backend.vercel.app/api";
 
   // Fetch QR code for registered devices
   useEffect(() => {

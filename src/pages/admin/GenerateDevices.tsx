@@ -301,7 +301,7 @@ const GenerateDevices = () => {
                       <div className="flex-shrink-0">
                         <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center">
                           <img
-                            src={`${import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.onrender.com/api'}${qr.qrImageUrl}`}
+                            src={`${import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.vercel.app/api'}${qr.qrImageUrl}`}
                             alt={`QR Code ${qr.deviceCode}`}
                             className="w-full h-full object-contain"
                             onError={(e) => {
