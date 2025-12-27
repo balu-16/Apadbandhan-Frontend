@@ -121,7 +121,10 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
               });
               console.log(`[Location] Successfully updated location for device ${deviceId}`);
             } catch (error: any) {
-              console.error(`[Location] Failed to update location for device ${deviceId}:`, error?.response?.data || error.message);
+              console.error(`[Location] Failed to update location for device ${deviceId}:`, 
+                JSON.stringify(error?.response?.data || error.message, null, 2),
+                'Status:', error?.response?.status
+              );
             }
           }
         }
