@@ -172,8 +172,8 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 5000,
+          timeout: 30000, // 30 seconds for mobile GPS
+          maximumAge: 10000, // Accept cached position up to 10 seconds old
         }
       );
     });

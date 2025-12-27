@@ -37,7 +37,8 @@ import {
   Sun,
   Moon,
   Monitor,
-  Palette
+  Palette,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -659,6 +660,29 @@ const Settings = () => {
             )}
           </Button>
         </div>
+      </section>
+
+      {/* Logout Section */}
+      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.35s" }}>
+        <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
+          <LogOut className="w-5 h-5 text-primary" />
+          Session
+        </h2>
+        <p className="text-muted-foreground mb-6">
+          Sign out from your account on this device.
+        </p>
+        
+        <Button 
+          variant="outline"
+          onClick={() => {
+            logout();
+            navigate("/");
+          }}
+          className="gap-2"
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </Button>
       </section>
 
       {/* Danger Zone */}
