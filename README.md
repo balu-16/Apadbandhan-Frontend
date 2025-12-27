@@ -107,7 +107,7 @@ cp .env.example .env
 npm run start:dev
 ```
 
-API documentation available at `http://localhost:3000/api/docs`
+API documentation available at `https://apadbandhan-backend.vercel.app/api/docs`
 
 ---
 
