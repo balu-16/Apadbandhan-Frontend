@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LocationTrackingProvider } from "@/contexts/LocationTrackingContext";
 import { ProtectedRoute, PublicRoute } from "@/components/auth";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
@@ -12,6 +13,8 @@ import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import AdminLayout from "./components/admin/AdminLayout";
+import { PoliceLayout } from "./components/police";
+import { HospitalLayout } from "./components/hospital";
 import {
   DashboardHome,
   AddDevice,
@@ -23,8 +26,13 @@ import {
   AdminDashboard,
   UsersManagement,
   AdminsManagement,
+  PoliceManagement,
+  HospitalManagement,
   AllDevices,
 } from "./pages/admin";
+import { PoliceDashboard } from "./pages/police";
+import { HospitalDashboard } from "./pages/hospital";
+import { AlertsPage, UsersReadOnlyPage } from "./pages/shared";
 
 const queryClient = new QueryClient();
 
@@ -32,7 +40,8 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
+        <LocationTrackingProvider>
+          <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -64,6 +73,7 @@ const App = () => (
                   <Route index element={<AdminDashboard />} />
                   <Route path="users" element={<UsersManagement />} />
                   <Route path="devices" element={<AllDevices />} />
+                  <Route path="alerts" element={<AlertsPage portalType="admin" />} />
                 </Route>
               </Route>
 
@@ -73,7 +83,28 @@ const App = () => (
                   <Route index element={<AdminDashboard />} />
                   <Route path="users" element={<UsersManagement />} />
                   <Route path="admins" element={<AdminsManagement />} />
+                  <Route path="police" element={<PoliceManagement />} />
+                  <Route path="hospitals" element={<HospitalManagement />} />
                   <Route path="devices" element={<AllDevices />} />
+                  <Route path="alerts" element={<AlertsPage portalType="superadmin" />} />
+                </Route>
+              </Route>
+
+              {/* Protected Police Routes */}
+              <Route element={<ProtectedRoute requiredRole="police" unauthorizedRedirect="/dashboard" />}>
+                <Route path="/police" element={<PoliceLayout />}>
+                  <Route index element={<PoliceDashboard />} />
+                  <Route path="users" element={<UsersReadOnlyPage portalType="police" />} />
+                  <Route path="alerts" element={<AlertsPage portalType="police" />} />
+                </Route>
+              </Route>
+
+              {/* Protected Hospital Routes */}
+              <Route element={<ProtectedRoute requiredRole="hospital" unauthorizedRedirect="/dashboard" />}>
+                <Route path="/hospital" element={<HospitalLayout />}>
+                  <Route index element={<HospitalDashboard />} />
+                  <Route path="users" element={<UsersReadOnlyPage portalType="hospital" />} />
+                  <Route path="alerts" element={<AlertsPage portalType="hospital" />} />
                 </Route>
               </Route>
 
@@ -82,6 +113,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </LocationTrackingProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>

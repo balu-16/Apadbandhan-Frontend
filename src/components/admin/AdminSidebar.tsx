@@ -5,7 +5,10 @@ import {
   Users, 
   Smartphone,
   LogOut,
-  UserCog
+  UserCog,
+  Bell,
+  Shield,
+  Cross
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -25,13 +28,16 @@ interface AdminSidebarProps {
 const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, isSuperAdmin } = useAuth();
+  const { logout, isSuperAdmin, user } = useAuth();
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Dashboard", path: basePath },
     { icon: Users, label: "Users", path: `${basePath}/users` },
     { icon: UserCog, label: "Admins", path: `${basePath}/admins`, superAdminOnly: true },
+    { icon: Shield, label: "Police", path: `${basePath}/police`, superAdminOnly: true },
+    { icon: Cross, label: "Hospitals", path: `${basePath}/hospitals`, superAdminOnly: true },
     { icon: Smartphone, label: "Devices", path: `${basePath}/devices` },
+    { icon: Bell, label: "Alerts", path: `${basePath}/alerts` },
   ];
 
   const filteredNavItems = navItems.filter(item => 
@@ -61,22 +67,25 @@ const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps
     >
       {/* Logo Section */}
       <div className={cn(
-        "border-b border-border/30 flex items-center transition-all duration-300",
-        isExpanded ? "p-6" : "p-4 justify-center"
+        "border-b border-border/30 flex items-center transition-all duration-300 overflow-hidden",
+        isExpanded ? "p-4" : "p-2 justify-center"
       )}>
         <Link to={basePath} className="flex items-center gap-3 group">
           <img 
             src="/logoAB.png" 
             alt="Apadbandhav Logo" 
-            className="w-12 h-12 object-contain flex-shrink-0"
+            className={cn(
+              "object-contain flex-shrink-0 transition-all duration-300",
+              isExpanded ? "w-16 h-16" : "w-14 h-14"
+            )}
           />
           {isExpanded && (
-            <div className="flex flex-col">
-              <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors duration-300 whitespace-nowrap overflow-hidden">
+            <div className="flex flex-col min-w-0">
+              <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-300 truncate">
                 Apadbandhav
               </span>
-              <span className="text-xs text-primary font-medium">
-                {isSuperAdmin ? "Super Admin" : "Admin Panel"}
+              <span className="text-xs text-primary font-medium truncate">
+                {user?.fullName || (isSuperAdmin ? "Super Admin" : "Admin")}
               </span>
             </div>
           )}

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { authAPI } from "@/services/api";
 import AuthLayout from "@/components/auth/AuthLayout";
 import authHero from "@/assets/auth-hero.png";
@@ -30,6 +31,7 @@ const Auth = () => {
   const { toast } = useToast();
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { requestLocationPermission } = useLocationTracking();
 
   // Toggle between login and signup without page refresh
   const toggleMode = (newMode: AuthMode) => {
@@ -102,6 +104,17 @@ const Auth = () => {
       
       login(access_token, user);
       
+      // Request location permission after successful login
+      requestLocationPermission().then((granted) => {
+        if (!granted) {
+          toast({
+            title: "Location Access",
+            description: "Location permission not granted. Some features may be limited.",
+            variant: "default",
+          });
+        }
+      });
+      
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in",
@@ -157,6 +170,17 @@ const Auth = () => {
       
       const { access_token, user } = response.data;
       login(access_token, user);
+      
+      // Request location permission after successful signup
+      requestLocationPermission().then((granted) => {
+        if (!granted) {
+          toast({
+            title: "Location Access",
+            description: "Location permission not granted. Some features may be limited.",
+            variant: "default",
+          });
+        }
+      });
       
       toast({
         title: "Account Created!",

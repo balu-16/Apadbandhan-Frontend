@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -41,7 +41,11 @@ import {
   WifiOff,
   Navigation,
   Loader2,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { cn } from "@/lib/utils";
 import { deviceLocationsAPI } from "@/services/api";
 
@@ -156,21 +160,47 @@ interface DeviceDetailsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const LOCATION_REFRESH_INTERVAL = 20000; // 20 seconds
+
 const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalProps) => {
   const [activeTab, setActiveTab] = useState("info");
   const [locationHistory, setLocationHistory] = useState<LocationHistory[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Location tracking context for permission status and current location
+  const { permissionStatus, currentLocation, lastKnownLocation, locationError, requestLocationPermission } = useLocationTracking();
 
   // Calculate derived values - must be before any early returns
   const hasLocation = device?.location?.latitude && device?.location?.longitude;
   const hasLocationHistory = locationHistory.length > 0;
+  const hasBrowserLocation = currentLocation?.latitude && currentLocation?.longitude;
+  const hasLastKnownLocation = lastKnownLocation?.latitude && lastKnownLocation?.longitude;
   
+  // Priority: locationHistory > device.location > currentLocation > lastKnownLocation > default
   const lat = hasLocationHistory 
     ? locationHistory[locationHistory.length - 1].latitude 
-    : (device?.location?.latitude || 20.5937);
+    : hasLocation 
+      ? device?.location?.latitude!
+      : hasBrowserLocation 
+        ? currentLocation!.latitude!
+        : hasLastKnownLocation 
+          ? lastKnownLocation!.latitude!
+          : 20.5937;
   const lng = hasLocationHistory 
     ? locationHistory[locationHistory.length - 1].longitude 
-    : (device?.location?.longitude || 78.9629);
+    : hasLocation 
+      ? device?.location?.longitude!
+      : hasBrowserLocation 
+        ? currentLocation!.longitude!
+        : hasLastKnownLocation 
+          ? lastKnownLocation!.longitude!
+          : 78.9629;
+  
+  // Check if we have any location to show
+  const hasAnyLocation = hasLocationHistory || hasLocation || hasBrowserLocation || hasLastKnownLocation;
 
   // Create route coordinates for polyline - memoize to avoid unnecessary recalculations
   const routeCoordinates: [number, number][] = useMemo(() => 
@@ -202,46 +232,79 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
     return String(id);
   };
 
-  // Single effect to fetch location history when modal opens
+  // Fetch location history function - memoized for reuse
+  const fetchLocationHistory = useCallback(async (isInitialLoad = false) => {
+    const deviceId = getDeviceId();
+    if (!deviceId) return;
+
+    if (isInitialLoad) {
+      setIsLoadingLocations(true);
+    } else {
+      setIsRefreshing(true);
+    }
+    
+    try {
+      const response = await deviceLocationsAPI.getByDevice(deviceId, { limit: 100 });
+      
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        // Sort by recordedAt ascending (oldest first for route)
+        const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) => 
+          new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
+        );
+        setLocationHistory(sortedLocations);
+      } else {
+        setLocationHistory([]);
+      }
+      setLastRefreshTime(new Date());
+    } catch (error: any) {
+      console.error('Failed to fetch location history:', error.response?.data || error.message);
+      if (isInitialLoad) {
+        setLocationHistory([]);
+      }
+    } finally {
+      setIsLoadingLocations(false);
+      setIsRefreshing(false);
+    }
+  }, [device?._id, device?.id]);
+
+  // Initial fetch and auto-refresh for online devices
   useEffect(() => {
     if (!open || !device) {
-      // Reset location history when modal closes
+      // Reset location history and clear interval when modal closes
       if (!open) {
         setLocationHistory([]);
         setIsLoadingLocations(false);
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
       }
       return;
     }
 
-    const deviceId = getDeviceId();
-    if (!deviceId) return;
+    // Initial fetch
+    fetchLocationHistory(true);
 
-    // Fetch location history
-    const fetchHistory = async () => {
-      setIsLoadingLocations(true);
-      
-      try {
-        const response = await deviceLocationsAPI.getByDevice(deviceId, { limit: 100 });
-        
-        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-          // Sort by recordedAt ascending (oldest first for route)
-          const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) => 
-            new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
-          );
-          setLocationHistory(sortedLocations);
-        } else {
-          setLocationHistory([]);
-        }
-      } catch (error: any) {
-        console.error('Failed to fetch location history:', error.response?.data || error.message);
-        setLocationHistory([]);
-      } finally {
-        setIsLoadingLocations(false);
+    // Set up auto-refresh only for online devices
+    if (device.status === 'online') {
+      refreshIntervalRef.current = setInterval(() => {
+        fetchLocationHistory(false);
+      }, LOCATION_REFRESH_INTERVAL);
+    }
+
+    // Cleanup interval on unmount or when modal closes
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
       }
     };
+  }, [open, device?._id, device?.id, device?.status, fetchLocationHistory]);
 
-    fetchHistory();
-  }, [open, device?._id, device?.id]);
+  // Manual refresh handler
+  const handleManualRefresh = useCallback(() => {
+    fetchLocationHistory(false);
+  }, [fetchLocationHistory]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -263,15 +326,15 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden sm:w-full">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-              <Smartphone className="w-5 h-5 text-primary" />
+          <DialogTitle className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold">{device.name}</h2>
-              <p className="text-sm text-muted-foreground font-mono">{device.code}</p>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base sm:text-xl font-bold truncate">{device.name}</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground font-mono truncate">{device.code}</p>
             </div>
             <Badge
               variant={device.status === "online" ? "default" : "secondary"}
@@ -296,14 +359,18 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="info" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Device Information
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="info" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Device </span>Info
             </TabsTrigger>
-            <TabsTrigger value="map" className="gap-2">
-              <MapPin className="w-4 h-4" />
-              Location Map
+            <TabsTrigger value="map" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Location </span>Map
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+              History
             </TabsTrigger>
           </TabsList>
 
@@ -448,14 +515,84 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
 
           {/* Map Tab */}
           <TabsContent value="map" className="mt-4">
+            {/* Location Permission Warning */}
+            {permissionStatus === 'denied' && (
+              <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                    Location Permission Not Granted
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Showing last known location. Enable location access for real-time tracking.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {permissionStatus === 'unavailable' && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                    Location Unavailable
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Geolocation is not supported by this browser.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-refresh status and controls */}
+            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {device.status === 'online' && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30 text-xs">
+                    <RefreshCw className={cn("w-3 h-3 mr-1", isRefreshing && "animate-spin")} />
+                    <span className="hidden sm:inline">Auto-refresh: </span>20s
+                  </Badge>
+                )}
+                {lastRefreshTime && (
+                  <span className="text-xs text-muted-foreground">
+                    <span className="hidden sm:inline">Last updated: </span>{lastRefreshTime.toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManualRefresh}
+                  disabled={isRefreshing || isLoadingLocations}
+                  className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm"
+                >
+                  <RefreshCw className={cn("w-3 h-3 sm:w-4 sm:h-4", isRefreshing && "animate-spin")} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1 bg-red-600 hover:bg-red-700 flex-1 sm:flex-none text-xs sm:text-sm"
+                  onClick={() => {
+                    // SOS functionality - not implemented yet
+                    console.log('SOS button clicked - functionality not implemented');
+                  }}
+                >
+                  <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
+                  SOS
+                </Button>
+              </div>
+            </div>
+
             <div className="rounded-xl overflow-hidden border border-border">
               {isLoadingLocations ? (
-                <div className="h-[400px] w-full flex flex-col items-center justify-center bg-muted/30">
+                <div className="h-[250px] sm:h-[350px] md:h-[400px] w-full flex flex-col items-center justify-center bg-muted/30">
                   <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
                   <p className="text-muted-foreground">Loading location data...</p>
                 </div>
-              ) : hasLocationHistory || hasLocation ? (
-                <div className="h-[400px] w-full">
+              ) : hasAnyLocation ? (
+                <div className="h-[250px] sm:h-[350px] md:h-[400px] w-full">
                   <MapContainer
                     key={mapKey}
                     center={[lat, lng]}
@@ -589,8 +726,8 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                       </Marker>
                     )}
 
-                    {/* Fallback: Single marker using device.location when no location history */}
-                    {locationHistory.length === 0 && hasLocation && (
+                    {/* Fallback: Single marker when no location history - uses device.location or browser location */}
+                    {locationHistory.length === 0 && hasAnyLocation && (
                       <Marker position={[lat, lng]} icon={deviceIcon}>
                         <Tooltip permanent={false} direction="top" offset={[0, -35]}>
                           <div className="text-xs font-mono">
@@ -599,7 +736,9 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                         </Tooltip>
                         <Popup>
                           <div className="text-center min-w-[150px]">
-                            <div className="font-bold text-blue-600 mb-1">📍 Current Location</div>
+                            <div className="font-bold text-blue-600 mb-1">
+                              📍 {hasBrowserLocation || hasLastKnownLocation ? 'Your Location' : 'Device Location'}
+                            </div>
                             <div className="text-sm font-medium">{device.name}</div>
                             <div className="text-xs text-gray-500">{device.code}</div>
                             {device.location?.address && (
@@ -609,6 +748,11 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                               Lat: {lat.toFixed(6)}<br/>
                               Lng: {lng.toFixed(6)}
                             </div>
+                            {(hasBrowserLocation || hasLastKnownLocation) && !hasLocation && (
+                              <div className="text-xs text-orange-500 mt-1">
+                                Using browser location
+                              </div>
+                            )}
                           </div>
                         </Popup>
                       </Marker>
@@ -616,12 +760,27 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   </MapContainer>
                 </div>
               ) : (
-                <div className="h-[400px] w-full flex flex-col items-center justify-center bg-muted/30">
+                <div className="h-[250px] sm:h-[350px] md:h-[400px] w-full flex flex-col items-center justify-center bg-muted/30">
                   <MapPin className="w-16 h-16 text-muted-foreground/30 mb-4" />
                   <p className="text-muted-foreground text-lg font-medium">No Location Data</p>
-                  <p className="text-muted-foreground text-sm">
-                    Device location will appear here once the device comes online
+                  <p className="text-muted-foreground text-sm text-center px-4">
+                    {permissionStatus === 'denied' 
+                      ? 'Location permission denied. Please enable it in your browser settings.'
+                      : permissionStatus === 'prompt'
+                        ? 'Enable location to see your current position on the map.'
+                        : 'Device location will appear here once the device comes online'}
                   </p>
+                  {permissionStatus === 'prompt' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 gap-2"
+                      onClick={requestLocationPermission}
+                    >
+                      <Navigation className="w-4 h-4" />
+                      Enable Location
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -688,7 +847,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
             )}
 
             {/* Location Details */}
-            {(hasLocation || hasLocationHistory) && (
+            {hasAnyLocation && (
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div className="bg-muted/30 rounded-xl p-4">
                   <p className="text-sm text-muted-foreground mb-1">Current Latitude</p>
@@ -700,6 +859,86 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          {/* History Tab */}
+          <TabsContent value="history" className="mt-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-4">
+              {/* Refresh controls */}
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  Location History
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManualRefresh}
+                  disabled={isRefreshing || isLoadingLocations}
+                  className="gap-1"
+                >
+                  <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+                  Refresh
+                </Button>
+              </div>
+
+              {isLoadingLocations ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+                  <p className="text-muted-foreground">Loading location history...</p>
+                </div>
+              ) : locationHistory.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {locationHistory.length} location{locationHistory.length > 1 ? 's' : ''} recorded
+                  </p>
+                  {[...locationHistory].reverse().map((loc, index) => (
+                    <div 
+                      key={loc._id} 
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-xl border",
+                        index === 0 
+                          ? "bg-red-500/10 border-red-500/30" 
+                          : index === locationHistory.length - 1 
+                            ? "bg-green-500/10 border-green-500/30" 
+                            : "bg-muted/30 border-border/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">
+                          {index === 0 ? "🏁" : index === locationHistory.length - 1 ? "🟢" : "📍"}
+                        </span>
+                        <div>
+                          <p className="font-medium">
+                            {index === 0 ? "Current Location" : index === locationHistory.length - 1 ? "Start Point" : `Waypoint ${locationHistory.length - index - 1}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {loc.city || loc.address || 'Unknown location'}
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{formatDate(loc.recordedAt)}</p>
+                        {loc.speed && (
+                          <p className="text-xs text-blue-500">{loc.speed} km/h</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 bg-muted/30 rounded-xl">
+                  <Clock className="w-16 h-16 text-muted-foreground/30 mb-4" />
+                  <p className="text-muted-foreground text-lg font-medium">No History Yet</p>
+                  <p className="text-muted-foreground text-sm text-center px-4">
+                    Location history will appear here as your device tracks your movements.
+                  </p>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

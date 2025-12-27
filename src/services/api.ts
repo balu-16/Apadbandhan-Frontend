@@ -6,7 +6,7 @@ export interface UserProfile {
   fullName: string;
   email: string;
   phone: string;
-  role: 'user' | 'admin' | 'superadmin';
+  role: 'user' | 'admin' | 'superadmin' | 'police' | 'hospital';
   profilePhoto?: string;
   hospitalPreference?: string;
   accidentAlerts?: boolean;
@@ -108,17 +108,21 @@ export const devicesAPI = {
 
 // Alerts API
 export const alertsAPI = {
-  getAll: () => api.get('/alerts'),
+  getAll: (params?: { status?: string; limit?: number; skip?: number }) => 
+    api.get('/alerts', { params }),
   getStats: () => api.get('/alerts/stats'),
   getByDevice: (deviceId: string) => api.get(`/alerts/device/${deviceId}`),
+  getById: (id: string) => api.get(`/alerts/${id}`),
+  getByUser: (userId: string) => api.get(`/alerts/user/${userId}`),
   create: (data: AlertData) => api.post('/alerts', data),
   updateStatus: (id: string, data: { status: string; notes?: string }) =>
     api.patch(`/alerts/${id}/status`, data),
+  getUserLocation: (alertId: string) => api.get(`/alerts/${alertId}/user-location`),
 };
 
 // Device Locations API
 export const deviceLocationsAPI = {
-  // Record a new location
+  // Record a new location from browser (JWT protected)
   create: (data: {
     deviceId: string;
     latitude: number;
@@ -133,7 +137,7 @@ export const deviceLocationsAPI = {
     pincode?: string;
     country?: string;
     source?: string;
-  }) => api.post('/device-locations', data),
+  }) => api.post('/device-locations/browser', data),
 
   // Record multiple locations in batch
   createBatch: (locations: any[]) => api.post('/device-locations/batch', locations),
@@ -201,7 +205,36 @@ export const adminAPI = {
   getQrCodeByDeviceCode: (deviceCode: string) => api.get(`/admin/qrcode/${deviceCode}`),
 };
 
-// QR Codes API
+// Police API
+export const policeAPI = {
+  // Get all users (read-only)
+  getAllUsers: () => api.get('/police/users'),
+  
+  // Get all alerts
+  getAllAlerts: () => api.get('/police/alerts'),
+  
+  // Get alert details with user info
+  getAlertDetails: (alertId: string) => api.get(`/police/alerts/${alertId}`),
+  
+  // Get dashboard stats
+  getStats: () => api.get('/police/stats'),
+};
+
+// Hospital API
+export const hospitalAPI = {
+  // Get all users (read-only)
+  getAllUsers: () => api.get('/hospital/users'),
+  
+  // Get all alerts
+  getAllAlerts: () => api.get('/hospital/alerts'),
+  
+  // Get alert details with user info
+  getAlertDetails: (alertId: string) => api.get(`/hospital/alerts/${alertId}`),
+  
+  // Get dashboard stats
+  getStats: () => api.get('/hospital/stats'),
+};
+
 export const qrCodesAPI = {
   // Get all QR codes
   getAll: () => api.get('/qrcodes'),

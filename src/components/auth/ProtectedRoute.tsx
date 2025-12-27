@@ -49,6 +49,10 @@ const getDashboardByRole = (role: UserRole | null): string => {
       return '/superadmin';
     case 'admin':
       return '/admin';
+    case 'police':
+      return '/police';
+    case 'hospital':
+      return '/hospital';
     default:
       return '/dashboard';
   }

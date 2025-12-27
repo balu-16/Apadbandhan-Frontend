@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Smartphone, UserCog, Activity } from "lucide-react";
+import { Users, Smartphone, UserCog, Activity, Shield, Cross } from "lucide-react";
 import { adminAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -11,6 +11,8 @@ interface Stats {
   offlineDevices: number;
   totalAdmins?: number;
   totalSuperAdmins?: number;
+  totalPolice?: number;
+  totalHospitals?: number;
 }
 
 const AdminDashboard = () => {
@@ -120,6 +122,44 @@ const AdminDashboard = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 System administrators
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {isSuperAdmin && (
+          <Card className="bg-card border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Police
+              </CardTitle>
+              <Shield className="h-5 w-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-500">
+                {stats?.totalPolice || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Police accounts
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {isSuperAdmin && (
+          <Card className="bg-card border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Hospitals
+              </CardTitle>
+              <Cross className="h-5 w-5 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-500">
+                {stats?.totalHospitals || 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Hospital accounts
               </p>
             </CardContent>
           </Card>

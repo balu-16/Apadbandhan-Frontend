@@ -90,38 +90,39 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
     className="block animate-fade-up opacity-0"
     style={{ animationDelay: delay, animationFillMode: "forwards" }}
   >
-    <div className="bg-card border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 group hover:shadow-glow">
-      <div className="flex items-start justify-between mb-4">
+    <div className="bg-card border border-border/50 rounded-2xl p-4 sm:p-6 hover:border-primary/50 transition-all duration-300 group hover:shadow-glow">
+      {/* Mobile: Stack layout, Desktop: Row layout */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0 mb-4">
         <div
           className="flex items-center gap-3 cursor-pointer flex-1"
           onClick={onClick}
         >
           <div className={cn(
-            "w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300",
+            "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-colors duration-300 flex-shrink-0",
             device.status === "online"
               ? "bg-green-500/20 group-hover:bg-green-500/30"
               : "bg-muted group-hover:bg-muted/80"
           )}>
             <Smartphone className={cn(
-              "w-6 h-6",
+              "w-5 h-5 sm:w-6 sm:h-6",
               device.status === "online" ? "text-green-500" : "text-muted-foreground"
             )} />
           </div>
-          <div>
-            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-sm sm:text-base">
               {device.name}
             </h3>
-            <p className="text-sm font-mono text-muted-foreground">
+            <p className="text-xs sm:text-sm font-mono text-muted-foreground truncate">
               {device.code.match(/.{1,4}/g)?.join(" ")}
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-end">
           {/* Status Badge */}
           <div className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
+            "flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs font-medium",
             device.status === "online"
               ? "bg-green-500/20 text-green-500"
               : "bg-muted text-muted-foreground"
@@ -131,7 +132,7 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
             ) : (
               <WifiOff className="w-3 h-3" />
             )}
-            {device.status === "online" ? "Online" : "Offline"}
+            <span className="hidden xs:inline">{device.status === "online" ? "Online" : "Offline"}</span>
           </div>
 
           {/* Toggle Online/Offline */}
@@ -152,7 +153,7 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
               e.stopPropagation();
               onDelete(device);
             }}
-            className="p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
             title="Delete device"
           >
             <Trash2 className="w-4 h-4" />
@@ -164,20 +165,20 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
         className="flex items-center justify-between cursor-pointer"
         onClick={onClick}
       >
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4" />
+        <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>{formatTimeAgo(device.lastUpdate || device.updatedAt)}</span>
           </div>
           {device.address && (
-            <div className="flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-primary" />
-              <span className="truncate max-w-[150px]">{device.address}</span>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+              <span className="truncate max-w-[100px] sm:max-w-[150px]">{device.address}</span>
             </div>
           )}
         </div>
 
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300 flex-shrink-0" />
       </div>
     </div>
   </div>
@@ -303,7 +304,7 @@ const Devices = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-fade-up">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-1">Your Devices</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Your Devices</h1>
           <p className="text-muted-foreground">
             Manage and monitor all your connected AIoT devices
           </p>
@@ -340,18 +341,18 @@ const Devices = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8 animate-fade-up" style={{ animationDelay: "0.15s" }}>
-        <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-foreground">{devices.length}</p>
-          <p className="text-sm text-muted-foreground">Total Devices</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+        <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
+          <p className="text-xl sm:text-2xl font-bold text-foreground">{devices.length}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
         </div>
-        <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-green-500">{onlineCount}</p>
-          <p className="text-sm text-muted-foreground">Online</p>
+        <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
+          <p className="text-xl sm:text-2xl font-bold text-green-500">{onlineCount}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Online</p>
         </div>
-        <div className="bg-card border border-border/50 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-muted-foreground">{offlineCount}</p>
-          <p className="text-sm text-muted-foreground">Offline</p>
+        <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
+          <p className="text-xl sm:text-2xl font-bold text-muted-foreground">{offlineCount}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Offline</p>
         </div>
       </div>
 

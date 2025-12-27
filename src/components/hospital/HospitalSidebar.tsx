@@ -2,10 +2,10 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
-  PlusCircle, 
-  Smartphone, 
-  Settings,
-  LogOut
+  Users, 
+  Bell,
+  LogOut,
+  Cross
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -15,35 +15,34 @@ interface NavItem {
   path: string;
 }
 
-const navItems: NavItem[] = [
-  { icon: Home, label: "Home", path: "/dashboard" },
-  { icon: PlusCircle, label: "Add Device", path: "/dashboard/add-device" },
-  { icon: Smartphone, label: "Devices", path: "/dashboard/devices" },
-  { icon: Settings, label: "Settings", path: "/dashboard/settings" },
-];
-
-interface DashboardSidebarProps {
+interface HospitalSidebarProps {
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
   isMobile?: boolean;
   onMobileClose?: () => void;
 }
 
-const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileClose }: DashboardSidebarProps) => {
+const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileClose }: HospitalSidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
 
+  const navItems: NavItem[] = [
+    { icon: Home, label: "Dashboard", path: "/hospital" },
+    { icon: Users, label: "Users", path: "/hospital/users" },
+    { icon: Bell, label: "Alerts", path: "/hospital/alerts" },
+  ];
+
+  const isActive = (path: string) => {
+    if (path === "/hospital") {
+      return location.pathname === "/hospital";
+    }
+    return location.pathname.startsWith(path);
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/");
-  };
-
-  const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return location.pathname === "/dashboard";
-    }
-    return location.pathname.startsWith(path);
   };
 
   return (
@@ -56,28 +55,26 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
       onMouseEnter={() => !isMobile && setIsExpanded(true)}
       onMouseLeave={() => !isMobile && setIsExpanded(false)}
     >
-      {/* Logo Section - Hidden on mobile since header has logo */}
+      {/* Logo Section - Hidden on mobile */}
       {!isMobile && (
         <div className={cn(
           "border-b border-border/30 flex items-center transition-all duration-300 overflow-hidden",
           isExpanded ? "p-4" : "p-2 justify-center"
         )}>
-          <Link to="/dashboard" className="flex items-center gap-3 group">
-            <img 
-              src="/logoAB.png" 
-              alt="Apadbandhav Logo" 
-              className={cn(
-                "object-contain flex-shrink-0 transition-all duration-300",
-                isExpanded ? "w-16 h-16" : "w-14 h-14"
-              )}
-            />
+          <Link to="/hospital" className="flex items-center gap-3 group">
+            <div className={cn(
+              "rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0 transition-all duration-300",
+              isExpanded ? "w-14 h-14" : "w-12 h-12"
+            )}>
+              <Cross className={cn("text-red-500 transition-all duration-300", isExpanded ? "w-8 h-8" : "w-7 h-7")} />
+            </div>
             {isExpanded && (
               <div className="flex flex-col min-w-0">
                 <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-300 truncate">
                   Apadbandhav
                 </span>
-                <span className="text-xs text-primary font-medium truncate">
-                  {user?.fullName || 'User'}
+                <span className="text-xs text-red-500 font-medium truncate">
+                  {user?.fullName || 'Hospital'}
                 </span>
               </div>
             )}
@@ -88,7 +85,7 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
       {/* Navigation */}
       <nav className={cn(
         "flex-1 space-y-2 transition-all duration-300",
-        isExpanded ? "p-4" : "px-2 py-4"
+        isExpanded || isMobile ? "p-4" : "px-2 py-4"
       )}>
         {navItems.map((item) => {
           const active = isActive(item.path);
@@ -102,18 +99,17 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
                 "relative flex items-center rounded-xl font-medium transition-all duration-300 group",
                 (isExpanded || isMobile) ? "gap-3 px-4 py-3" : "justify-center p-3",
                 active
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-red-500/10 text-red-500"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
-              {/* Active indicator */}
               {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full shadow-glow" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-red-500 rounded-r-full shadow-glow" />
               )}
               
               <item.icon className={cn(
                 "w-5 h-5 transition-all duration-300 flex-shrink-0",
-                active ? "text-primary" : "group-hover:text-foreground"
+                active ? "text-red-500" : "group-hover:text-foreground"
               )} />
               
               {(isExpanded || isMobile) && (
@@ -129,7 +125,7 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
       {/* Bottom Section */}
       <div className={cn(
         "border-t border-border/30 transition-all duration-300",
-        isExpanded ? "p-4" : "px-2 py-4"
+        (isExpanded || isMobile) ? "p-4" : "px-2 py-4"
       )}>
         <button
           onClick={() => {
@@ -150,4 +146,4 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
   );
 };
 
-export default DashboardSidebar;
+export default HospitalSidebar;

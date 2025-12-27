@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import DashboardSidebar from "./DashboardSidebar";
+import PoliceSidebar from "./PoliceSidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DashboardLayout = () => {
+const PoliceLayout = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, userRole } = useAuth();
   const navigate = useNavigate();
 
-  // Close mobile sidebar on route change
   useEffect(() => {
     setIsMobileSidebarOpen(false);
   }, [navigate]);
@@ -21,17 +20,20 @@ const DashboardLayout = () => {
     if (!isLoading && !isAuthenticated) {
       navigate("/login");
     }
-  }, [isAuthenticated, isLoading, navigate]);
+    if (!isLoading && isAuthenticated && userRole !== 'police') {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, isLoading, userRole, navigate]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || userRole !== 'police') {
     return null;
   }
 
@@ -47,8 +49,11 @@ const DashboardLayout = () => {
         >
           {isMobileSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </Button>
-        <img src="/logoAB.png" alt="Apadbandhav" className="w-10 h-10" />
-        <div className="w-10" /> {/* Spacer for centering */}
+        <div className="flex items-center gap-2">
+          <Shield className="w-6 h-6 text-blue-500" />
+          <span className="font-bold text-foreground">Police Portal</span>
+        </div>
+        <div className="w-10" />
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -59,12 +64,12 @@ const DashboardLayout = () => {
         />
       )}
 
-      {/* Sidebar - Desktop: always visible, Mobile: slide in */}
+      {/* Sidebar */}
       <div className={cn(
         "lg:block",
         isMobileSidebarOpen ? "block" : "hidden"
       )}>
-        <DashboardSidebar
+        <PoliceSidebar
           isExpanded={isSidebarExpanded}
           setIsExpanded={setIsSidebarExpanded}
           isMobile={isMobileSidebarOpen}
@@ -75,9 +80,9 @@ const DashboardLayout = () => {
       {/* Main Content */}
       <main className={cn(
         "min-h-screen transition-all duration-300 ease-in-out",
-        "pt-16 lg:pt-0", // Add top padding for mobile header
+        "pt-16 lg:pt-0",
         isSidebarExpanded ? "lg:ml-64" : "lg:ml-20",
-        "ml-0" // No left margin on mobile
+        "ml-0"
       )}>
         <div className="p-4 sm:p-6 lg:p-8">
           <Outlet />
@@ -87,4 +92,4 @@ const DashboardLayout = () => {
   );
 };
 
-export default DashboardLayout;
+export default PoliceLayout;

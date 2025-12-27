@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authAPI } from '@/services/api';
 
-export type UserRole = 'user' | 'admin' | 'superadmin';
+export type UserRole = 'user' | 'admin' | 'superadmin' | 'police' | 'hospital';
 
 interface User {
   id: string;
@@ -23,6 +23,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isPolice: boolean;
+  isHospital: boolean;
   userRole: UserRole | null;
   login: (token: string, user: User) => void;
   logout: () => void;
@@ -83,6 +85,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const userRole = user?.role || null;
   const isAdmin = userRole === 'admin' || userRole === 'superadmin';
   const isSuperAdmin = userRole === 'superadmin';
+  const isPolice = userRole === 'police';
+  const isHospital = userRole === 'hospital';
 
   return (
     <AuthContext.Provider
@@ -93,6 +97,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!token && !!user,
         isAdmin,
         isSuperAdmin,
+        isPolice,
+        isHospital,
         userRole,
         login,
         logout,
