@@ -147,7 +147,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
   const qrDevice = device as QrCodeDevice;
   const regDevice = device as RegisteredDevice;
 
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  const apiUrl = import.meta.env.VITE_API_URL || "https://apadbandhan-backend.vercel.app/api";
 
   // Calculate location values
   const hasLocation = !isQrCode && regDevice?.location?.latitude && regDevice?.location?.longitude;
