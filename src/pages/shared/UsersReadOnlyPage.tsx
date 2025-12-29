@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { adminAPI } from "@/services/api";
+import { policeAPI, hospitalAPI } from "@/services/api";
 import { 
   Users,
   Search,
@@ -44,7 +44,8 @@ const UsersReadOnlyPage = ({ portalType }: UsersReadOnlyPageProps) => {
     else setIsLoading(true);
 
     try {
-      const response = await adminAPI.getAllUsers('user');
+      const api = portalType === 'police' ? policeAPI : hospitalAPI;
+      const response = await api.getAllUsers();
       setUsers(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Failed to fetch users:", error);

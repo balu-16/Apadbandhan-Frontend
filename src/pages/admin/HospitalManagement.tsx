@@ -66,7 +66,7 @@ const HospitalManagement = () => {
 
   const fetchHospitalUsers = async () => {
     try {
-      const response = await adminAPI.getAllUsers('hospital');
+      const response = await adminAPI.getAllHospitalUsers();
       setHospitalUsers(response.data);
     } catch (error) {
       console.error("Failed to fetch hospital users:", error);
@@ -92,10 +92,7 @@ const HospitalManagement = () => {
 
     setIsSubmitting(true);
     try {
-      await adminAPI.createUser({
-        ...newHospital,
-        role: 'hospital',
-      });
+      await adminAPI.createHospitalUser(newHospital);
       toast({
         title: "Success",
         description: "Hospital account created successfully",
@@ -119,7 +116,7 @@ const HospitalManagement = () => {
 
     setIsSubmitting(true);
     try {
-      await adminAPI.deleteUser(selectedHospital._id || selectedHospital.id);
+      await adminAPI.deleteHospitalUser(selectedHospital._id || selectedHospital.id);
       toast({
         title: "Success",
         description: "Hospital account deleted successfully",

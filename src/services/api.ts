@@ -40,7 +40,7 @@ export interface AlertData {
 }
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.vercel.app/api';
+  import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -178,6 +178,18 @@ export const adminAPI = {
   createAdmin: (data: { fullName: string; email: string; phone: string }) =>
     api.post('/admin/admins', data),
   deleteAdmin: (id: string) => api.delete(`/admin/admins/${id}`),
+
+  // Police user management (SuperAdmin only)
+  getAllPoliceUsers: () => api.get('/admin/police-users'),
+  createPoliceUser: (data: { fullName: string; email: string; phone: string }) =>
+    api.post('/admin/police-users', data),
+  deletePoliceUser: (id: string) => api.delete(`/admin/police-users/${id}`),
+
+  // Hospital user management (SuperAdmin only)
+  getAllHospitalUsers: () => api.get('/admin/hospital-users'),
+  createHospitalUser: (data: { fullName: string; email: string; phone: string }) =>
+    api.post('/admin/hospital-users', data),
+  deleteHospitalUser: (id: string) => api.delete(`/admin/hospital-users/${id}`),
 
   // Device management (Admin/SuperAdmin)
   getAllDevices: (userId?: string) => api.get('/admin/devices', { params: { userId } }),

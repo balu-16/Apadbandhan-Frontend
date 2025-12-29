@@ -119,7 +119,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     
     if (!hasRequiredRole && !isSuperAdminAccessingAdminRoute) {
       // User is authenticated but doesn't have the required role
-      return <Navigate to={unauthorizedRedirect} replace />;
+      // Redirect to their appropriate dashboard based on role
+      const roleBasedRedirect = getDashboardByRole(userRole);
+      return <Navigate to={roleBasedRedirect} replace />;
     }
   }
 

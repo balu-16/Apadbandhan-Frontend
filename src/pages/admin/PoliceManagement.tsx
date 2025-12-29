@@ -66,7 +66,7 @@ const PoliceManagement = () => {
 
   const fetchPoliceUsers = async () => {
     try {
-      const response = await adminAPI.getAllUsers('police');
+      const response = await adminAPI.getAllPoliceUsers();
       setPoliceUsers(response.data);
     } catch (error) {
       console.error("Failed to fetch police users:", error);
@@ -92,10 +92,7 @@ const PoliceManagement = () => {
 
     setIsSubmitting(true);
     try {
-      await adminAPI.createUser({
-        ...newPolice,
-        role: 'police',
-      });
+      await adminAPI.createPoliceUser(newPolice);
       toast({
         title: "Success",
         description: "Police account created successfully",
@@ -119,7 +116,7 @@ const PoliceManagement = () => {
 
     setIsSubmitting(true);
     try {
-      await adminAPI.deleteUser(selectedPolice._id || selectedPolice.id);
+      await adminAPI.deletePoliceUser(selectedPolice._id || selectedPolice.id);
       toast({
         title: "Success",
         description: "Police account deleted successfully",

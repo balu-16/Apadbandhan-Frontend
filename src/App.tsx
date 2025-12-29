@@ -56,8 +56,8 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
               </Route>
 
-              {/* Protected Dashboard Routes (Any authenticated user) */}
-              <Route element={<ProtectedRoute />}>
+              {/* Protected Dashboard Routes (Regular users only) */}
+              <Route element={<ProtectedRoute requiredRole="user" unauthorizedRedirect="/login" />}>
                 <Route path="/dashboard" element={<DashboardLayout />}>
                   <Route index element={<DashboardHome />} />
                   <Route path="add-device" element={<AddDevice />} />

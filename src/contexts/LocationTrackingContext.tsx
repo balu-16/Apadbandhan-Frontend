@@ -89,6 +89,13 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
 
   // Update location on server for user's devices
   const updateLocationOnServer = useCallback(async (location: LocationState) => {
+    // Only track location for regular users, not admin/police/hospital
+    const userRole = user?.role;
+    if (userRole && userRole !== 'user') {
+      console.log('[Location] Skipping update - not a regular user, role:', userRole);
+      return;
+    }
+    
     if (!isAuthenticated || !location.latitude || !location.longitude) {
       console.log('[Location] Skipping update - not authenticated or no location');
       return;
@@ -134,7 +141,7 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
     } catch (error: any) {
       console.error('[Location] Failed to update location on server:', error?.response?.data || error.message);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.role]);
 
   // Get current position
   const getCurrentPosition = useCallback((): Promise<LocationState> => {
@@ -267,11 +274,21 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
   }, [trackingIntervalId]);
 
   // Auto-start tracking when authenticated and permission is granted
+  // Only for regular users, not admin/police/hospital
   useEffect(() => {
-    if (isAuthenticated && permissionStatus === 'granted' && !isTracking) {
+    const userRole = user?.role;
+    const isRegularUser = !userRole || userRole === 'user';
+    
+    if (isAuthenticated && permissionStatus === 'granted' && !isTracking && isRegularUser) {
       startTracking();
     }
-  }, [isAuthenticated, permissionStatus, isTracking, startTracking]);
+    
+    // Stop tracking if user is not a regular user
+    if (isAuthenticated && isTracking && !isRegularUser) {
+      console.log('[Location] Stopping tracking - not a regular user, role:', userRole);
+      stopTracking();
+    }
+  }, [isAuthenticated, permissionStatus, isTracking, startTracking, stopTracking, user?.role]);
 
   // Stop tracking on logout
   useEffect(() => {

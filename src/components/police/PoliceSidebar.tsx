@@ -4,8 +4,7 @@ import {
   Home, 
   Users, 
   Bell,
-  LogOut,
-  Shield
+  LogOut
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -62,12 +61,14 @@ const PoliceSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileCl
           isExpanded ? "p-4" : "p-2 justify-center"
         )}>
           <Link to="/police" className="flex items-center gap-3 group">
-            <div className={cn(
-              "rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 transition-all duration-300",
-              isExpanded ? "w-14 h-14" : "w-12 h-12"
-            )}>
-              <Shield className={cn("text-blue-500 transition-all duration-300", isExpanded ? "w-8 h-8" : "w-7 h-7")} />
-            </div>
+            <img 
+              src="/logoAB.png" 
+              alt="Apadbandhav Logo" 
+              className={cn(
+                "object-contain flex-shrink-0 transition-all duration-300",
+                isExpanded ? "w-14 h-14" : "w-12 h-12"
+              )}
+            />
             {isExpanded && (
               <div className="flex flex-col min-w-0">
                 <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors duration-300 truncate">
