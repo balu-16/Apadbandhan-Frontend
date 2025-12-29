@@ -99,7 +99,7 @@ const AllDevices = () => {
   const { toast } = useToast();
 
   // API base URL for QR images
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.vercel.app/api';
 
   useEffect(() => {
     fetchData();
