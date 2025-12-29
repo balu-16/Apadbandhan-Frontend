@@ -104,6 +104,8 @@ export const devicesAPI = {
   delete: (id: string) => api.delete(`/devices/${id}`),
   updateLocation: (id: string, data: { latitude: number; longitude: number; address?: string }) =>
     api.patch(`/devices/${id}/location`, data),
+  updateStatus: (id: string, status: 'online' | 'offline' | 'maintenance') =>
+    api.patch(`/devices/${id}/status/${status}`),
 };
 
 // Alerts API
@@ -113,11 +115,9 @@ export const alertsAPI = {
   getStats: () => api.get('/alerts/stats'),
   getByDevice: (deviceId: string) => api.get(`/alerts/device/${deviceId}`),
   getById: (id: string) => api.get(`/alerts/${id}`),
-  getByUser: (userId: string) => api.get(`/alerts/user/${userId}`),
   create: (data: AlertData) => api.post('/alerts', data),
   updateStatus: (id: string, data: { status: string; notes?: string }) =>
     api.patch(`/alerts/${id}/status`, data),
-  getUserLocation: (alertId: string) => api.get(`/alerts/${alertId}/user-location`),
 };
 
 // Device Locations API
@@ -225,8 +225,16 @@ export const policeAPI = {
   // Get all alerts
   getAllAlerts: () => api.get('/police/alerts'),
   
+  // Get alerts with params
+  getAlerts: (params?: { status?: string; limit?: number }) =>
+    api.get('/police/alerts', { params }),
+  
   // Get alert details with user info
   getAlertDetails: (alertId: string) => api.get(`/police/alerts/${alertId}`),
+  
+  // Update alert status
+  updateAlertStatus: (alertId: string, status: string, notes?: string) =>
+    api.patch(`/police/alerts/${alertId}`, { status, notes }),
   
   // Get dashboard stats
   getStats: () => api.get('/police/stats'),
@@ -240,11 +248,26 @@ export const hospitalAPI = {
   // Get all alerts
   getAllAlerts: () => api.get('/hospital/alerts'),
   
+  // Get alerts with params
+  getAlerts: (params?: { status?: string; limit?: number }) =>
+    api.get('/hospital/alerts', { params }),
+  
   // Get alert details with user info
   getAlertDetails: (alertId: string) => api.get(`/hospital/alerts/${alertId}`),
   
+  // Update alert status
+  updateAlertStatus: (alertId: string, status: string, notes?: string) =>
+    api.patch(`/hospital/alerts/${alertId}`, { status, notes }),
+  
   // Get dashboard stats
   getStats: () => api.get('/hospital/stats'),
+};
+
+// Health API (for monitoring)
+export const healthAPI = {
+  check: () => api.get('/health'),
+  checkMqtt: () => api.get('/health/mqtt'),
+  checkDetailed: () => api.get('/health/detailed'),
 };
 
 export const qrCodesAPI = {
@@ -287,12 +310,21 @@ export const qrCodesAPI = {
   // Delete QR code
   delete: (id: string) => api.delete(`/qrcodes/${id}`),
 
-  // Upload QR image
+  // Upload QR image by ID
   uploadImage: (deviceId: string, file: File) => {
     const formData = new FormData();
     formData.append('deviceId', deviceId);
     formData.append('qrImage', file);
     return api.post('/qrcodes/upload-qr', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+
+  // Upload QR image by device code
+  uploadImageByCode: (code: string, file: File) => {
+    const formData = new FormData();
+    formData.append('qrImage', file);
+    return api.post(`/qrcodes/upload-qr/${code}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },

@@ -207,7 +207,7 @@ const Devices = () => {
   const handleToggleStatus = async (device: Device) => {
     const newStatus = device.status === "online" ? "offline" : "online";
     try {
-      await devicesAPI.update(device._id, { status: newStatus });
+      await devicesAPI.updateStatus(device._id, newStatus);
       setDevices(prev => prev.map(d =>
         d._id === device._id ? { ...d, status: newStatus as "online" | "offline" } : d
       ));
