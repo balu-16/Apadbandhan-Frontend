@@ -49,7 +49,18 @@ import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { cn } from "@/lib/utils";
 import { deviceLocationsAPI } from "@/services/api";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 // Fix for default marker icons in Leaflet with Vite
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -110,6 +121,7 @@ interface LocationHistory {
   speed?: number;
   heading?: number;
   recordedAt: string;
+  isSOS?: boolean;
 }
 
 interface EmergencyContact {
@@ -139,7 +151,7 @@ interface Location {
 }
 
 interface Device {
-  _id?: string;
+  _id?: string | { $oid: string };
   id?: string;
   name: string;
   code: string;
@@ -183,20 +195,20 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   const lat = hasLocationHistory 
     ? locationHistory[locationHistory.length - 1].latitude 
     : hasLocation 
-      ? device?.location?.latitude!
+      ? device?.location?.latitude ?? 20.5937
       : hasBrowserLocation 
-        ? currentLocation!.latitude!
+        ? currentLocation?.latitude ?? 20.5937
         : hasLastKnownLocation 
-          ? lastKnownLocation!.latitude!
+          ? lastKnownLocation?.latitude ?? 20.5937
           : 20.5937;
   const lng = hasLocationHistory 
     ? locationHistory[locationHistory.length - 1].longitude 
     : hasLocation 
-      ? device?.location?.longitude!
+      ? device?.location?.longitude ?? 78.9629
       : hasBrowserLocation 
-        ? currentLocation!.longitude!
+        ? currentLocation?.longitude ?? 78.9629
         : hasLastKnownLocation 
-          ? lastKnownLocation!.longitude!
+          ? lastKnownLocation?.longitude ?? 78.9629
           : 78.9629;
   
   // Check if we have any location to show
@@ -215,22 +227,23 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   );
 
   // Extract device ID properly - handle both _id and id formats
-  const getDeviceId = (): string | null => {
+  const getDeviceId = useCallback((): string | null => {
     if (!device) return null;
     // Try _id first (MongoDB format), then id (transformed format)
     const id = device._id || device.id;
     if (!id) return null;
+    
     // If it's an object with $oid (MongoDB extended JSON), extract it
-    if (typeof id === 'object' && (id as any).$oid) {
-      return (id as any).$oid;
+    if (typeof id === 'object' && id !== null && '$oid' in id) {
+      return (id as { $oid: string }).$oid;
     }
     // If it's an object with toString method (ObjectId), convert it
-    if (typeof id === 'object' && typeof (id as any).toString === 'function') {
-      return (id as any).toString();
+    if (typeof id === 'object' && id !== null && typeof (id as { toString: () => string }).toString === 'function') {
+      return (id as { toString: () => string }).toString();
     }
     // Otherwise return as string
     return String(id);
-  };
+  }, [device]);
 
   // Fetch location history function - memoized for reuse
   const fetchLocationHistory = useCallback(async (isInitialLoad = false) => {
@@ -244,7 +257,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
     }
     
     try {
-      const response = await deviceLocationsAPI.getByDevice(deviceId, { limit: 100 });
+      const response = await deviceLocationsAPI.getByDevice(deviceId);
       
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         // Sort by recordedAt ascending (oldest first for route)
@@ -256,8 +269,9 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
         setLocationHistory([]);
       }
       setLastRefreshTime(new Date());
-    } catch (error: any) {
-      console.error('Failed to fetch location history:', error.response?.data || error.message);
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      console.error('Failed to fetch location history:', err.response?.data || err.message);
       if (isInitialLoad) {
         setLocationHistory([]);
       }
@@ -265,7 +279,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
       setIsLoadingLocations(false);
       setIsRefreshing(false);
     }
-  }, [device?._id, device?.id]);
+  }, [getDeviceId]);
 
   // Initial fetch and auto-refresh for online devices
   useEffect(() => {
@@ -299,7 +313,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
         refreshIntervalRef.current = null;
       }
     };
-  }, [open, device?._id, device?.id, device?.status, fetchLocationHistory]);
+  }, [open, device, fetchLocationHistory]);
 
   // Manual refresh handler
   const handleManualRefresh = useCallback(() => {
@@ -574,9 +588,40 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   variant="destructive"
                   size="sm"
                   className="gap-1 bg-red-600 hover:bg-red-700 flex-1 sm:flex-none text-xs sm:text-sm"
-                  onClick={() => {
-                    // SOS functionality - not implemented yet
-                    console.log('SOS button clicked - functionality not implemented');
+                  onClick={async () => {
+                    const deviceId = getDeviceId();
+                    if (!deviceId) return;
+                    
+                    // Get current location from browser
+                    if (currentLocation?.latitude && currentLocation?.longitude) {
+                      try {
+                        await deviceLocationsAPI.create({
+                          deviceId,
+                          latitude: currentLocation.latitude,
+                          longitude: currentLocation.longitude,
+                          accuracy: currentLocation.accuracy,
+                          source: 'browser',
+                          isSOS: true,
+                        });
+                        // Refresh to show the new SOS location
+                        fetchLocationHistory(false);
+                      } catch (error) {
+                        console.error('Failed to record SOS location:', error);
+                      }
+                    } else if (lastKnownLocation?.latitude && lastKnownLocation?.longitude) {
+                      try {
+                        await deviceLocationsAPI.create({
+                          deviceId,
+                          latitude: lastKnownLocation.latitude,
+                          longitude: lastKnownLocation.longitude,
+                          source: 'browser',
+                          isSOS: true,
+                        });
+                        fetchLocationHistory(false);
+                      } catch (error) {
+                        console.error('Failed to record SOS location:', error);
+                      }
+                    }
                   }}
                 >
                   <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -656,20 +701,22 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                       <CircleMarker
                         key={loc._id}
                         center={[loc.latitude, loc.longitude]}
-                        radius={8}
-                        fillColor="#3b82f6"
+                        radius={loc.isSOS ? 10 : 8}
+                        fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"}
                         fillOpacity={0.9}
                         color="white"
-                        weight={3}
+                        weight={loc.isSOS ? 4 : 3}
                       >
                         <Tooltip permanent={false} direction="top" offset={[0, -5]}>
                           <div className="text-xs font-mono">
-                            📍 {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                            {loc.isSOS ? "🚨 SOS" : "📍"} {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
                           </div>
                         </Tooltip>
                         <Popup>
                           <div className="text-center min-w-[150px]">
-                            <div className="font-bold text-blue-600 mb-1">📍 Waypoint {index + 1}</div>
+                            <div className={`font-bold mb-1 ${loc.isSOS ? "text-red-600" : "text-blue-600"}`}>
+                              {loc.isSOS ? "🚨 SOS Alert" : `📍 Waypoint ${index + 1}`}
+                            </div>
                             <div className="text-sm font-medium">{loc.city || 'Unknown'}</div>
                             {loc.address && (
                               <div className="text-xs text-gray-600">{loc.address}</div>
@@ -796,6 +843,12 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow"></div>
                     <span className="text-muted-foreground">Waypoints</span>
+                  </div>
+                )}
+                {locationHistory.some(loc => loc.isSOS) && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow"></div>
+                    <span className="text-muted-foreground">SOS</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2">

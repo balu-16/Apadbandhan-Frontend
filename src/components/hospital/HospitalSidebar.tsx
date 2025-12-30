@@ -4,7 +4,8 @@ import {
   Home, 
   Users, 
   Bell,
-  LogOut
+  LogOut,
+  Settings
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -30,6 +31,7 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
     { icon: Home, label: "Dashboard", path: "/hospital" },
     { icon: Users, label: "Users", path: "/hospital/users" },
     { icon: Bell, label: "Alerts", path: "/hospital/alerts" },
+    { icon: Settings, label: "Settings", path: "/hospital/settings" },
   ];
 
   const isActive = (path: string) => {
@@ -131,7 +133,9 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
         <button
           onClick={() => {
             handleLogout();
-            isMobile && onMobileClose?.();
+            if (isMobile && onMobileClose) {
+              onMobileClose();
+            }
           }}
           title={!isExpanded && !isMobile ? "Logout" : undefined}
           className={cn(

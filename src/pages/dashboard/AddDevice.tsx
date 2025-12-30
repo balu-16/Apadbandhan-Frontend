@@ -28,6 +28,16 @@ import { cn } from "@/lib/utils";
 import { devicesAPI, qrCodesAPI } from "@/services/api";
 import QRScanner from "@/components/QRScanner";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface FamilyMember {
   name: string;
   relation: string;
@@ -58,7 +68,7 @@ const AddDevice = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [savedDevice, setSavedDevice] = useState<any>(null);
+  const [savedDevice, setSavedDevice] = useState<unknown>(null);
   
   // Step 1: QR Scanner
   const [deviceCode, setDeviceCode] = useState("");
@@ -116,9 +126,10 @@ const AddDevice = () => {
         });
         return false;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Validation error:', error);
-      const errorMessage = error.response?.data?.message || "Invalid device QR code. Please scan a valid device.";
+      const err = error as AxiosErrorLike;
+      const errorMessage = err.response?.data?.message || "Invalid device QR code. Please scan a valid device.";
       setValidationError(errorMessage);
       toast({
         title: "Invalid QR Code",
@@ -240,11 +251,12 @@ const AddDevice = () => {
         title: "Device Registered!",
         description: "Your device has been successfully added.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving device:', error);
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to register device. Please try again.",
+        description: err.response?.data?.message || "Failed to register device. Please try again.",
         variant: "destructive",
       });
     } finally {

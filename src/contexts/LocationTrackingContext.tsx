@@ -2,6 +2,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useAuth } from './AuthContext';
 import { deviceLocationsAPI, devicesAPI } from '@/services/api';
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface LocationState {
   latitude: number | null;
   longitude: number | null;
@@ -32,6 +42,12 @@ const LocationTrackingContext = createContext<LocationTrackingContextType | unde
 
 const LOCATION_UPDATE_INTERVAL = 20000; // 20 seconds
 const LOCATION_STORAGE_KEY = 'last_known_location';
+
+interface Device {
+  _id?: string;
+  id?: string;
+  status: string;
+}
 
 export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
@@ -109,9 +125,17 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
       console.log('[Location] Found devices:', devices?.length || 0);
 
       if (devices && Array.isArray(devices) && devices.length > 0) {
-        // Update location for ALL registered devices (not just online ones)
-        // This ensures location is tracked even if device status isn't updated
-        for (const device of devices) {
+        // Filter only online devices (status field is 'online', not isOnline boolean)
+        const onlineDevices = devices.filter((device: Device) => device.status === 'online');
+        console.log('[Location] Online devices:', onlineDevices.length);
+
+        if (onlineDevices.length === 0) {
+          console.log('[Location] No online devices found, skipping location update');
+          return;
+        }
+
+        // Update location only for online devices
+        for (const device of onlineDevices) {
           const deviceId = device._id || device.id;
           if (deviceId) {
             try {
@@ -127,10 +151,11 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
                 source: 'browser',
               });
               console.log(`[Location] Successfully updated location for device ${deviceId}`);
-            } catch (error: any) {
+            } catch (error: unknown) {
+              const err = error as AxiosErrorLike;
               console.error(`[Location] Failed to update location for device ${deviceId}:`, 
-                JSON.stringify(error?.response?.data || error.message, null, 2),
-                'Status:', error?.response?.status
+                JSON.stringify(err?.response?.data || err.message, null, 2),
+                'Status:', err?.response?.status
               );
             }
           }
@@ -138,8 +163,9 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
       } else {
         console.log('[Location] No devices found for user');
       }
-    } catch (error: any) {
-      console.error('[Location] Failed to update location on server:', error?.response?.data || error.message);
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      console.error('[Location] Failed to update location on server:', err?.response?.data || err.message);
     }
   }, [isAuthenticated, user?.role]);
 
@@ -207,9 +233,10 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
       await updateLocationOnServer(location);
       
       return true;
-    } catch (error: any) {
-      setLocationError(error.message);
-      if (error.message.includes('denied')) {
+    } catch (error: unknown) {
+      const err = error as Error;
+      setLocationError(err.message);
+      if (err.message.includes('denied')) {
         setPermissionStatus('denied');
       }
       return false;
@@ -233,9 +260,10 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
       
       // Update location on server
       await updateLocationOnServer(location);
-    } catch (error: any) {
-      console.error('[Location] Failed to update location:', error);
-      setLocationError(error.message);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('[Location] Failed to update location:', err);
+      setLocationError(err.message);
     }
   }, [permissionStatus, getCurrentPosition, saveLocationToStorage, updateLocationOnServer]);
 
@@ -325,6 +353,7 @@ export const LocationTrackingProvider: React.FC<{ children: ReactNode }> = ({ ch
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLocationTracking = () => {
   const context = useContext(LocationTrackingContext);
   if (context === undefined) {

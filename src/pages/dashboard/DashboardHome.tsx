@@ -14,6 +14,16 @@ import {
 import { devicesAPI, alertsAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface StatCardProps {
   icon: React.ElementType;
   title: string;
@@ -58,6 +68,13 @@ interface DashboardStats {
   locationEnabled: boolean;
 }
 
+interface Device {
+  status: string;
+  healthInsurance?: string;
+  vehicleInsurance?: string;
+  termInsurance?: string;
+}
+
 const DashboardHome = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
@@ -81,7 +98,7 @@ const DashboardHome = () => {
         
         // Fetch devices
         const devicesResponse = await devicesAPI.getAll();
-        const devices = devicesResponse.data || [];
+        const devices: Device[] = devicesResponse.data || [];
         
         // Fetch alert stats
         let alertStats = { total: 0 };
@@ -94,21 +111,22 @@ const DashboardHome = () => {
         }
         
         // Check if any device has insurance
-        const hasInsurance = devices.some((d: any) => 
+        const hasInsurance = devices.some((d: Device) => 
           d.healthInsurance || d.vehicleInsurance || d.termInsurance
         );
         
         setStats({
           deviceCount: devices.length,
-          onlineDevices: devices.filter((d: any) => d.status === 'online').length,
+          onlineDevices: devices.filter((d: Device) => d.status === 'online').length,
           alertsCount: alertStats.total || 0,
           hasInsurance,
           locationEnabled: user?.locationTracking ?? true,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Don't log auth errors
-        if (error.response?.status !== 401) {
-          console.error('Error fetching dashboard data:', error);
+        const err = error as AxiosErrorLike;
+        if (err.response?.status !== 401) {
+          console.error('Error fetching dashboard data:', err);
         }
       } finally {
         setIsLoading(false);

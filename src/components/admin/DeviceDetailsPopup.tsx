@@ -33,7 +33,18 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { adminAPI, deviceLocationsAPI } from "@/services/api";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 // Fix for default marker icons in Leaflet with Vite
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -82,6 +93,7 @@ interface LocationHistory {
   speed?: number;
   heading?: number;
   recordedAt: string;
+  isSOS?: boolean;
 }
 
 interface AssignedUser {
@@ -110,13 +122,13 @@ interface QrCodeDevice {
 }
 
 interface RegisteredDevice {
-  _id?: string;
+  _id?: string | { $oid: string };
   id?: string;
   name: string;
   code: string;
   type: string;
   status: string;
-  userId?: any;
+  userId?: AssignedUser | string;
   location?: Location;
   isActive: boolean;
   createdAt: string;
@@ -147,7 +159,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
   const qrDevice = device as QrCodeDevice;
   const regDevice = device as RegisteredDevice;
 
-  const apiUrl = import.meta.env.VITE_API_URL || "https://apadbandhan-backend.vercel.app/api";
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
   // Calculate location values
   const hasLocation = !isQrCode && regDevice?.location?.latitude && regDevice?.location?.longitude;
@@ -178,8 +190,15 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
     if (isQrCode) return null;
     const id = regDevice._id || regDevice.id;
     if (!id) return null;
-    if (typeof id === 'object' && (id as any).$oid) return (id as any).$oid;
-    if (typeof id === 'object' && typeof (id as any).toString === 'function') return (id as any).toString();
+    
+    if (typeof id === 'object' && id !== null && '$oid' in id) {
+      return (id as { $oid: string }).$oid;
+    }
+    
+    if (typeof id === 'object' && typeof (id as { toString: () => string }).toString === 'function') {
+      return (id as { toString: () => string }).toString();
+    }
+    
     return String(id);
   }, [device, isQrCode, regDevice]);
 
@@ -195,7 +214,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
     }
     
     try {
-      const response = await deviceLocationsAPI.getByDevice(deviceId, { limit: 100 });
+      const response = await deviceLocationsAPI.getByDevice(deviceId);
       
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) => 
@@ -206,8 +225,9 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
         setLocationHistory([]);
       }
       setLastRefreshTime(new Date());
-    } catch (error: any) {
-      console.error('Failed to fetch location history:', error.response?.data || error.message);
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      console.error('Failed to fetch location history:', err.response?.data || err.message);
       if (isInitialLoad) {
         setLocationHistory([]);
       }
@@ -218,11 +238,29 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
   }, [getDeviceId]);
 
   // Fetch QR code for registered devices
+  const fetchQrCodeForDevice = useCallback(async () => {
+    if (!regDevice?.code) return;
+    setIsLoadingQr(true);
+    try {
+      const response = await adminAPI.getQrCodeByDeviceCode(regDevice.code);
+      if (response.data && response.data.qrImageUrl) {
+        setQrCodeUrl(response.data.qrImageUrl);
+      } else {
+        setQrCodeUrl(null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch QR code:", error);
+      setQrCodeUrl(null);
+    } finally {
+      setIsLoadingQr(false);
+    }
+  }, [regDevice?.code]);
+
   useEffect(() => {
     if (open && device && !isQrCode) {
       fetchQrCodeForDevice();
     }
-  }, [open, device, isQrCode]);
+  }, [open, device, isQrCode, fetchQrCodeForDevice]);
 
   // Fetch location history for registered devices
   useEffect(() => {
@@ -655,7 +693,17 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                         </Marker>
                       )}
                       {locationHistory.length > 2 && locationHistory.slice(1, -1).map((loc) => (
-                        <CircleMarker key={loc._id} center={[loc.latitude, loc.longitude]} radius={6} fillColor="#3b82f6" fillOpacity={0.9} color="white" weight={2} />
+                        <CircleMarker 
+                          key={loc._id} 
+                          center={[loc.latitude, loc.longitude]} 
+                          radius={loc.isSOS ? 8 : 6} 
+                          fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"} 
+                          fillOpacity={0.9} 
+                          color="white" 
+                          weight={loc.isSOS ? 3 : 2}
+                        >
+                          {loc.isSOS && <Tooltip direction="top">🚨 SOS</Tooltip>}
+                        </CircleMarker>
                       ))}
                     </MapContainer>
                   ) : (
@@ -672,6 +720,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                   <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500"></div>Start</div>
                     <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-500"></div>Waypoints</div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-500"></div>SOS</div>
                     <div className="flex items-center gap-1"><div className="w-0 h-0 border-l-4 border-r-4 border-b-8 border-l-transparent border-r-transparent border-b-red-500"></div>Current</div>
                     <div className="flex items-center gap-1"><div className="w-4 h-0.5 bg-blue-500 border-dashed"></div>Route</div>
                   </div>

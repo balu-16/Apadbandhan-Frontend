@@ -21,16 +21,16 @@ import {
 import { adminAPI, qrCodesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import DeviceDetailsPopup from "@/components/admin/DeviceDetailsPopup";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
 
 interface AssignedUser {
   id: string;
@@ -59,7 +59,7 @@ interface RegisteredDevice {
   type: string;
   status: string;
   batteryLevel: number;
-  userId: any;
+  userId: string | { _id: string; fullName?: string; name?: string; phone?: string; email?: string };
   location?: {
     latitude: number;
     longitude: number;
@@ -99,13 +99,9 @@ const AllDevices = () => {
   const { toast } = useToast();
 
   // API base URL for QR images
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.vercel.app/api';
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [qrCodesRes, statsRes, devicesRes] = await Promise.all([
         adminAPI.getAllQrCodes(),
@@ -115,7 +111,7 @@ const AllDevices = () => {
       setQrCodes(qrCodesRes.data);
       setStats(statsRes.data);
       setRegisteredDevices(devicesRes.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to fetch data:", error);
       toast({
         title: "Error",
@@ -125,7 +121,11 @@ const AllDevices = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleGenerate = async () => {
     const count = parseInt(generateCount);
@@ -146,10 +146,11 @@ const AllDevices = () => {
         description: response.data.message,
       });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to generate devices",
+        description: err.response?.data?.message || "Failed to generate devices",
         variant: "destructive",
       });
     } finally {
@@ -191,10 +192,11 @@ const AllDevices = () => {
       setDeviceToDelete(null);
       setDeleteConfirmText("");
       fetchData(); // Refresh the list
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete device",
+        description: err.response?.data?.message || "Failed to delete device",
         variant: "destructive",
       });
     } finally {

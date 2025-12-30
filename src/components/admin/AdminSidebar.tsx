@@ -8,7 +8,9 @@ import {
   UserCog,
   Bell,
   Shield,
-  Cross
+  Cross,
+  FileText,
+  Settings
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -37,7 +39,9 @@ const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps
     { icon: Shield, label: "Police", path: `${basePath}/police`, superAdminOnly: true },
     { icon: Cross, label: "Hospitals", path: `${basePath}/hospitals`, superAdminOnly: true },
     { icon: Smartphone, label: "Devices", path: `${basePath}/devices` },
+    { icon: FileText, label: "Requests", path: `${basePath}/requests` },
     { icon: Bell, label: "Alerts", path: `${basePath}/alerts` },
+    { icon: Settings, label: "Settings", path: `${basePath}/settings` },
   ];
 
   const filteredNavItems = navItems.filter(item => 

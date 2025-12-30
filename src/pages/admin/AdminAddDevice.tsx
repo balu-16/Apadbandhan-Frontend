@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,16 @@ import {
 import { devicesAPI, adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
 
 interface User {
   _id: string;
@@ -47,11 +57,7 @@ const AdminAddDevice = () => {
   const { isSuperAdmin } = useAuth();
   const basePath = isSuperAdmin ? "/superadmin" : "/admin";
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const response = await adminAPI.getAllUsers();
       setUsers(response.data);
@@ -65,7 +71,11 @@ const AdminAddDevice = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.code || !formData.userId) {
@@ -100,10 +110,11 @@ const AdminAddDevice = () => {
         description: "Device added successfully",
       });
       navigate(`${basePath}/devices`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to add device",
+        description: err.response?.data?.message || "Failed to add device",
         variant: "destructive",
       });
     } finally {

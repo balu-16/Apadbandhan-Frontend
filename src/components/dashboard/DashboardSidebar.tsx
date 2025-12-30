@@ -134,7 +134,9 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
         <button
           onClick={() => {
             handleLogout();
-            isMobile && onMobileClose?.();
+            if (isMobile && onMobileClose) {
+              onMobileClose();
+            }
           }}
           title={!isExpanded && !isMobile ? "Logout" : undefined}
           className={cn(

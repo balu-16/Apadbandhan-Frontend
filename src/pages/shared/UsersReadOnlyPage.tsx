@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { policeAPI, hospitalAPI } from "@/services/api";
 import { 
   Users,
@@ -35,11 +35,7 @@ const UsersReadOnlyPage = ({ portalType }: UsersReadOnlyPageProps) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async (showRefresh = false) => {
+  const fetchUsers = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
     else setIsLoading(true);
 
@@ -47,14 +43,18 @@ const UsersReadOnlyPage = ({ portalType }: UsersReadOnlyPageProps) => {
       const api = portalType === 'police' ? policeAPI : hospitalAPI;
       const response = await api.getAllUsers();
       setUsers(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to fetch users:", error);
       setUsers([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [portalType]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const filteredUsers = users.filter(user => {
     const searchLower = searchQuery.toLowerCase();

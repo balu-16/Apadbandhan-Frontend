@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,16 @@ import {
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface HospitalUser {
   _id: string;
   id: string;
@@ -60,11 +70,7 @@ const HospitalManagement = () => {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchHospitalUsers();
-  }, []);
-
-  const fetchHospitalUsers = async () => {
+  const fetchHospitalUsers = useCallback(async () => {
     try {
       const response = await adminAPI.getAllHospitalUsers();
       setHospitalUsers(response.data);
@@ -78,7 +84,11 @@ const HospitalManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchHospitalUsers();
+  }, [fetchHospitalUsers]);
 
   const handleAddHospital = async () => {
     if (!newHospital.fullName || !newHospital.email || !newHospital.phone) {
@@ -100,10 +110,11 @@ const HospitalManagement = () => {
       setIsAddDialogOpen(false);
       setNewHospital({ fullName: "", email: "", phone: "" });
       fetchHospitalUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to create hospital account",
+        description: err.response?.data?.message || "Failed to create hospital account",
         variant: "destructive",
       });
     } finally {
@@ -124,10 +135,11 @@ const HospitalManagement = () => {
       setIsDeleteDialogOpen(false);
       setSelectedHospital(null);
       fetchHospitalUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete hospital account",
+        description: err.response?.data?.message || "Failed to delete hospital account",
         variant: "destructive",
       });
     } finally {

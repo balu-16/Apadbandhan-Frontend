@@ -14,6 +14,7 @@ interface User {
   accidentAlerts?: boolean;
   smsNotifications?: boolean;
   locationTracking?: boolean;
+  isActive?: boolean;
 }
 
 interface AuthContextType {
@@ -74,6 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await authAPI.getProfile();
       const updatedUser = response.data;
+      console.log('[Auth] Refreshed user data:', updatedUser);
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (error) {
@@ -111,6 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

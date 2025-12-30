@@ -11,6 +11,16 @@ import authHero from "@/assets/auth-hero.png";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 type AuthMode = "login" | "signup";
 
 const Auth = () => {
@@ -76,10 +86,11 @@ const Auth = () => {
         title: "OTP Sent!",
         description: "A 6-digit OTP has been sent to your phone",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to send OTP. Please try again.",
+        description: err.response?.data?.message || "Failed to send OTP. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -129,10 +140,11 @@ const Auth = () => {
       } else {
         navigate("/dashboard");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Invalid OTP. Please try again.",
+        description: err.response?.data?.message || "Invalid OTP. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -196,10 +208,11 @@ const Auth = () => {
       } else {
         navigate("/dashboard");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to create account. Please try again.",
+        description: err.response?.data?.message || "Failed to create account. Please try again.",
         variant: "destructive",
       });
     } finally {

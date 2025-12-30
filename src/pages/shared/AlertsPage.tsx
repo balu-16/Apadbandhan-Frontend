@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { alertsAPI } from "@/services/api";
 import { 
@@ -31,6 +31,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Fix for default marker icons
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -38,10 +39,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
+interface UserInfo {
+  fullName?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+}
+
 interface Alert {
   _id: string;
-  deviceId: any;
-  userId: any;
+  deviceId: string | { _id: string; name: string; code: string };
+  userId: string | UserInfo;
   type: string;
   status: string;
   severity?: string;
@@ -63,7 +71,7 @@ interface AlertDetailsModalProps {
 const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps) => {
   if (!alert) return null;
 
-  const user = alert.userId;
+  const user = alert.userId as UserInfo | undefined;
   const hasLocation = alert.location?.latitude && alert.location?.longitude;
 
   return (
@@ -225,25 +233,25 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchAlerts();
-  }, []);
-
-  const fetchAlerts = async (showRefresh = false) => {
+  const fetchAlerts = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
     else setIsLoading(true);
 
     try {
       const response = await alertsAPI.getAll();
       setAlerts(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to fetch alerts:", error);
       setAlerts([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts]);
 
   const handleViewAlert = (alert: Alert) => {
     setSelectedAlert(alert);

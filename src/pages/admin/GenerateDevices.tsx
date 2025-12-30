@@ -24,6 +24,16 @@ import {
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface AssignedUser {
   id: string;
   fullName: string;
@@ -55,15 +65,11 @@ const GenerateDevices = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [count, setCount] = useState("10");
-  const [generatedDevices, setGeneratedDevices] = useState<any[]>([]);
+  const [generatedDevices, setGeneratedDevices] = useState<QrCode[]>([]);
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [qrCodesRes, statsRes] = await Promise.all([
         adminAPI.getAllQrCodes(),
@@ -71,7 +77,7 @@ const GenerateDevices = () => {
       ]);
       setQrCodes(qrCodesRes.data);
       setStats(statsRes.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to fetch data:", error);
       toast({
         title: "Error",
@@ -81,7 +87,11 @@ const GenerateDevices = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleGenerate = async () => {
     const countNum = parseInt(count);
@@ -106,10 +116,11 @@ const GenerateDevices = () => {
       });
       // Refresh the data
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to generate devices",
+        description: err.response?.data?.message || "Failed to generate devices",
         variant: "destructive",
       });
     } finally {
@@ -301,7 +312,7 @@ const GenerateDevices = () => {
                       <div className="flex-shrink-0">
                         <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center">
                           <img
-                            src={`${import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.vercel.app/api'}${qr.qrImageUrl}`}
+                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}${qr.qrImageUrl}`}
                             alt={`QR Code ${qr.deviceCode}`}
                             className="w-full h-full object-contain"
                             onError={(e) => {

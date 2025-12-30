@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import UserDetailsModal from "@/components/admin/UserDetailsModal";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface User {
   _id: string;
   id: string;
@@ -68,11 +78,7 @@ const UsersManagement = () => {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       // Fetch only users with role='user'
       const response = await adminAPI.getAllUsers('user');
@@ -87,7 +93,11 @@ const UsersManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleAddUser = async () => {
     if (!newUser.fullName || !newUser.email || !newUser.phone) {
@@ -112,10 +122,11 @@ const UsersManagement = () => {
       setIsAddDialogOpen(false);
       setNewUser({ fullName: "", email: "", phone: "" });
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to create user",
+        description: err.response?.data?.message || "Failed to create user",
         variant: "destructive",
       });
     } finally {
@@ -136,10 +147,11 @@ const UsersManagement = () => {
       setIsDeleteDialogOpen(false);
       setSelectedUser(null);
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete user",
+        description: err.response?.data?.message || "Failed to delete user",
         variant: "destructive",
       });
     } finally {

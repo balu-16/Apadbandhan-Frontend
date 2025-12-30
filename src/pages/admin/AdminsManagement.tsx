@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,16 @@ import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import AdminDetailsModal from "@/components/admin/AdminDetailsModal";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface Admin {
   _id: string;
   id: string;
@@ -67,11 +77,7 @@ const AdminsManagement = () => {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchAdmins();
-  }, []);
-
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
     try {
       const response = await adminAPI.getAllAdmins();
       setAdmins(response.data);
@@ -85,7 +91,11 @@ const AdminsManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchAdmins();
+  }, [fetchAdmins]);
 
   const handleAddAdmin = async () => {
     if (!newAdmin.fullName || !newAdmin.email || !newAdmin.phone) {
@@ -107,10 +117,11 @@ const AdminsManagement = () => {
       setIsAddDialogOpen(false);
       setNewAdmin({ fullName: "", email: "", phone: "" });
       fetchAdmins();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to create admin",
+        description: err.response?.data?.message || "Failed to create admin",
         variant: "destructive",
       });
     } finally {
@@ -131,10 +142,11 @@ const AdminsManagement = () => {
       setIsDeleteDialogOpen(false);
       setSelectedAdmin(null);
       fetchAdmins();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete admin",
+        description: err.response?.data?.message || "Failed to delete admin",
         variant: "destructive",
       });
     } finally {

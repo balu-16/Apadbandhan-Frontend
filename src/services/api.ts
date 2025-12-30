@@ -39,8 +39,25 @@ export interface AlertData {
   };
 }
 
+export interface DeviceLocationData {
+  deviceId: string;
+  latitude: number;
+  longitude: number;
+  altitude?: number;
+  speed?: number;
+  heading?: number;
+  accuracy?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  source?: string;
+  isSOS?: boolean;
+}
+
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'https://apadbandhan-backend.vercel.app/api';
+  import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -123,24 +140,10 @@ export const alertsAPI = {
 // Device Locations API
 export const deviceLocationsAPI = {
   // Record a new location from browser (JWT protected)
-  create: (data: {
-    deviceId: string;
-    latitude: number;
-    longitude: number;
-    altitude?: number;
-    speed?: number;
-    heading?: number;
-    accuracy?: number;
-    address?: string;
-    city?: string;
-    state?: string;
-    pincode?: string;
-    country?: string;
-    source?: string;
-  }) => api.post('/device-locations/browser', data),
+  create: (data: DeviceLocationData) => api.post('/device-locations/browser', data),
 
   // Record multiple locations in batch
-  createBatch: (locations: any[]) => api.post('/device-locations/batch', locations),
+  createBatch: (locations: DeviceLocationData[]) => api.post('/device-locations/batch', locations),
 
   // Get all locations for a device
   getByDevice: (deviceId: string, params?: {
@@ -170,7 +173,7 @@ export const adminAPI = {
   getUserById: (id: string) => api.get(`/admin/users/${id}`),
   createUser: (data: { fullName: string; email: string; phone: string; role?: string }) =>
     api.post('/admin/users', data),
-  updateUser: (id: string, data: any) => api.patch(`/admin/users/${id}`, data),
+  updateUser: (id: string, data: Partial<UserProfile>) => api.patch(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
 
   // Admin management (SuperAdmin only)
@@ -219,6 +222,10 @@ export const adminAPI = {
 
 // Police API
 export const policeAPI = {
+  // Update profile (isActive, etc)
+  updateProfile: (data: { isActive?: boolean; fullName?: string }) => 
+    api.patch('/police/profile', data),
+
   // Get all users (read-only)
   getAllUsers: () => api.get('/police/users'),
   
@@ -238,10 +245,27 @@ export const policeAPI = {
   
   // Get dashboard stats
   getStats: () => api.get('/police/stats'),
+
+  // Location tracking
+  updateLocation: (data: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    altitude?: number;
+    speed?: number;
+    heading?: number;
+  }) => api.post('/police/location', data),
+  
+  getLocationHistory: () => api.get('/police/location/history'),
+  getLastLocation: () => api.get('/police/location/last'),
 };
 
 // Hospital API
 export const hospitalAPI = {
+  // Update profile (isActive, etc)
+  updateProfile: (data: { isActive?: boolean; fullName?: string }) => 
+    api.patch('/hospital/profile', data),
+
   // Get all users (read-only)
   getAllUsers: () => api.get('/hospital/users'),
   
@@ -261,6 +285,19 @@ export const hospitalAPI = {
   
   // Get dashboard stats
   getStats: () => api.get('/hospital/stats'),
+
+  // Location tracking
+  updateLocation: (data: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    altitude?: number;
+    speed?: number;
+    heading?: number;
+  }) => api.post('/hospital/location', data),
+  
+  getLocationHistory: () => api.get('/hospital/location/history'),
+  getLastLocation: () => api.get('/hospital/location/last'),
 };
 
 // Health API (for monitoring)
@@ -328,6 +365,87 @@ export const qrCodesAPI = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+};
+
+// Partners API
+export const partnersAPI = {
+  // Public - Submit partner request (no auth required)
+  submitRequest: (data: {
+    partnerType: 'hospital' | 'police' | 'ranger';
+    organizationName: string;
+    contactPerson: string;
+    email: string;
+    phone: string;
+    registrationNumber?: string;
+    specialization?: string;
+    jurisdiction?: string;
+    coverageArea?: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    additionalInfo?: string;
+  }) => api.post('/partners/request', data),
+
+  // Admin - Get all partner requests
+  getAll: (status?: string) => api.get('/partners', { params: { status } }),
+
+  // Admin - Get partner request stats
+  getStats: () => api.get('/partners/stats'),
+
+  // Admin - Get single partner request
+  getById: (id: string) => api.get(`/partners/${id}`),
+
+  // Admin - Update partner request status
+  update: (id: string, data: { status?: string; reviewNotes?: string }) =>
+    api.patch(`/partners/${id}`, data),
+
+  // SuperAdmin - Delete partner request
+  delete: (id: string) => api.delete(`/partners/${id}`),
+};
+
+// SOS API
+export const sosAPI = {
+  // Trigger SOS emergency
+  trigger: (data: { lat: number; lng: number }) => 
+    api.post('/sos/trigger', data),
+
+  // Get SOS results by ID
+  getResults: (sosId: string) => 
+    api.get(`/sos/results/${sosId}`),
+
+  // Resolve SOS event
+  resolve: (sosId: string, notes?: string) => 
+    api.post(`/sos/resolve/${sosId}`, { notes }),
+
+  // Get user's SOS history
+  getHistory: () => 
+    api.get('/sos/history'),
+
+  // Get all active SOS events (admin/responder)
+  getActive: () => 
+    api.get('/sos/active'),
+};
+
+// On-Duty API (for police/hospital)
+export const onDutyAPI = {
+  // Update responder location when on duty
+  updateLocation: (data: {
+    lat: number;
+    lng: number;
+    accuracy?: number;
+    altitude?: number;
+    speed?: number;
+    heading?: number;
+  }) => api.post('/on-duty/location', data),
+
+  // Toggle on-duty status
+  toggle: (data: { onDuty: boolean; lat?: number; lng?: number }) => 
+    api.post('/on-duty/toggle', data),
+
+  // Get current on-duty status
+  getStatus: () => 
+    api.get('/on-duty/status'),
 };
 
 export default api;

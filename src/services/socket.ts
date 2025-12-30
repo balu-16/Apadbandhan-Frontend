@@ -14,7 +14,7 @@ const SOCKET_URL =
 
 class SocketService {
   private socket: Socket | null = null;
-  private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
 
   connect(): Socket {
     if (this.socket?.connected) return this.socket;
@@ -33,7 +33,7 @@ class SocketService {
     });
 
     Object.values(WS_EVENTS).forEach((event) => {
-      this.socket?.on(event, (data) => {
+      this.socket?.on(event, (data: unknown) => {
         this.listeners.get(event)?.forEach((cb) => cb(data));
       });
     });
@@ -41,14 +41,16 @@ class SocketService {
     return this.socket;
   }
 
-  on(event: string, callback: (data: any) => void): () => void {
+  on(event: string, callback: (data: unknown) => void): () => void {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
     this.listeners.get(event)!.add(callback);
     return () => this.listeners.get(event)?.delete(callback);
   }
 
-  emit(event: string, data?: any): void {
-    this.socket?.connected && this.socket.emit(event, data);
+  emit(event: string, data?: unknown): void {
+    if (this.socket?.connected) {
+      this.socket.emit(event, data);
+    }
   }
 
   subscribeDevice(deviceId: string): void {

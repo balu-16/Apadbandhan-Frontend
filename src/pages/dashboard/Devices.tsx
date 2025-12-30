@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,8 @@ import {
   Loader2,
   RefreshCw,
   Trash2,
-  Power
+  Power,
+  AlertTriangle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -28,9 +29,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn, formatTimeAgo } from "@/lib/utils";
-import { devicesAPI } from "@/services/api";
+import { devicesAPI, deviceLocationsAPI } from "@/services/api";
+import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { useToast } from "@/hooks/use-toast";
 import DeviceDetailsModal from "@/components/devices/DeviceDetailsModal";
+
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
 
 interface EmergencyContact {
   name: string;
@@ -83,9 +95,10 @@ interface DeviceCardProps {
   onClick: () => void;
   onToggleStatus: (device: Device) => void;
   onDelete: (device: Device) => void;
+  onSOS: (device: Device) => void;
 }
 
-const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: DeviceCardProps) => (
+const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete, onSOS }: DeviceCardProps) => (
   <div
     className="block animate-fade-up opacity-0"
     style={{ animationDelay: delay, animationFillMode: "forwards" }}
@@ -147,6 +160,18 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
             />
           </div>
 
+          {/* SOS Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSOS(device);
+            }}
+            className="p-1.5 sm:p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
+            title="Trigger SOS"
+          >
+            <AlertTriangle className="w-4 h-4" />
+          </button>
+
           {/* Delete Button */}
           <button
             onClick={(e) => {
@@ -186,6 +211,7 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete }: Device
 
 const Devices = () => {
   const { toast } = useToast();
+  const { currentLocation, lastKnownLocation } = useLocationTracking();
   const [searchQuery, setSearchQuery] = useState("");
   const [devices, setDevices] = useState<Device[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -230,6 +256,40 @@ const Devices = () => {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleSOS = async (device: Device) => {
+    const location = currentLocation || lastKnownLocation;
+    if (!location?.latitude || !location?.longitude) {
+      toast({
+        title: "Location Required",
+        description: "Unable to get your current location for SOS",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await deviceLocationsAPI.create({
+        deviceId: device._id,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy,
+        source: 'browser',
+        isSOS: true,
+      });
+      toast({
+        title: "🚨 SOS Triggered",
+        description: `Emergency location recorded for ${device.name}`,
+      });
+    } catch (error) {
+      console.error('Failed to trigger SOS:', error);
+      toast({
+        title: "Error",
+        description: "Failed to trigger SOS. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!deviceToDelete || deleteConfirmText !== "confirm to delete") return;
 
@@ -255,7 +315,7 @@ const Devices = () => {
     }
   };
 
-  const fetchDevices = async (showRefreshState = false) => {
+  const fetchDevices = useCallback(async (showRefreshState = false) => {
     if (showRefreshState) {
       setIsRefreshing(true);
     }
@@ -271,10 +331,11 @@ const Devices = () => {
 
       const response = await devicesAPI.getAll();
       setDevices(response.data);
-    } catch (error: any) {
-      console.error('Error fetching devices:', error);
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      console.error('Error fetching devices:', err);
       // Don't show error toast for auth errors (handled by interceptor)
-      if (error.response?.status !== 401) {
+      if (err.response?.status !== 401) {
         toast({
           title: "Error",
           description: "Failed to load devices. Please try again.",
@@ -285,11 +346,11 @@ const Devices = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchDevices();
-  }, []);
+  }, [fetchDevices]);
 
   const filteredDevices = devices.filter(device =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -375,6 +436,7 @@ const Devices = () => {
                   onClick={() => handleDeviceClick(device)}
                   onToggleStatus={handleToggleStatus}
                   onDelete={handleDeleteClick}
+                  onSOS={handleSOS}
                 />
               ))}
             </div>

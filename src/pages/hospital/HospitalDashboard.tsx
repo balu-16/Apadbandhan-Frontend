@@ -12,6 +12,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface AxiosErrorLike {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 interface Stats {
   totalUsers: number;
   totalAlerts: number;
@@ -48,6 +58,13 @@ const StatCard = ({
   </div>
 );
 
+interface Alert {
+  _id: string;
+  type: string;
+  status: string;
+  createdAt: string;
+}
+
 const HospitalDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({
@@ -57,7 +74,7 @@ const HospitalDashboard = () => {
     resolvedAlerts: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [recentAlerts, setRecentAlerts] = useState<any[]>([]);
+  const [recentAlerts, setRecentAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -71,16 +88,26 @@ const HospitalDashboard = () => {
         alertsAPI.getAll({ limit: 5 }).catch(() => ({ data: [] })),
       ]);
       
+      interface HospitalStats {
+        totalUsers?: number;
+        totalAlerts?: number;
+        pendingAlerts?: number;
+        resolvedAlerts?: number;
+      }
+
+      const statsData = statsRes.data as HospitalStats;
+      
       setStats({
-        totalUsers: statsRes.data?.totalUsers || 0,
-        totalAlerts: statsRes.data?.totalAlerts || 0,
-        pendingAlerts: statsRes.data?.pendingAlerts || 0,
-        resolvedAlerts: statsRes.data?.resolvedAlerts || 0,
+        totalUsers: statsData.totalUsers || 0,
+        totalAlerts: statsData.totalAlerts || 0,
+        pendingAlerts: statsData.pendingAlerts || 0,
+        resolvedAlerts: statsData.resolvedAlerts || 0,
       });
       
-      setRecentAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
+      setRecentAlerts(Array.isArray(alertsRes.data) ? alertsRes.data as Alert[] : []);
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      console.error("Failed to fetch dashboard data:", err.response?.data || err.message);
     } finally {
       setIsLoading(false);
     }

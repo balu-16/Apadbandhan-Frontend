@@ -63,13 +63,7 @@ const UserDetailsModal = ({ user, open, onOpenChange }: UserDetailsModalProps) =
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
-  useEffect(() => {
-    if (open && user) {
-      fetchLoginLogs();
-    }
-  }, [open, user]);
-
-  const fetchLoginLogs = async () => {
+  const fetchLoginLogs = useCallback(async () => {
     if (!user) return;
     setIsLoadingLogs(true);
     try {
@@ -82,7 +76,13 @@ const UserDetailsModal = ({ user, open, onOpenChange }: UserDetailsModalProps) =
     } finally {
       setIsLoadingLogs(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (open && user) {
+      fetchLoginLogs();
+    }
+  }, [open, user, fetchLoginLogs]);
 
   if (!user) return null;
 

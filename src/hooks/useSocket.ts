@@ -1,6 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import socketService, { WS_EVENTS } from '@/services/socket';
 
+interface DeviceStatusEvent {
+  deviceId: string;
+  status: string;
+}
+
+interface DeviceTelemetryEvent {
+  data: {
+    deviceId: string;
+    [key: string]: unknown;
+  };
+}
+
 /**
  * Hook for WebSocket connection and event handling
  */
@@ -30,8 +42,8 @@ export function useSocket() {
 /**
  * Hook for listening to device events
  */
-export function useDeviceEvents(onEvent?: (data: any) => void) {
-  const [events, setEvents] = useState<any[]>([]);
+export function useDeviceEvents(onEvent?: (data: unknown) => void) {
+  const [events, setEvents] = useState<unknown[]>([]);
 
   useEffect(() => {
     socketService.connect();
@@ -50,15 +62,15 @@ export function useDeviceEvents(onEvent?: (data: any) => void) {
 /**
  * Hook for listening to accident alerts
  */
-export function useAccidentAlerts(onAccident?: (data: any) => void) {
-  const [accidents, setAccidents] = useState<any[]>([]);
+export function useAccidentAlerts(onAccident?: (data: unknown) => void) {
+  const [accidents, setAccidents] = useState<unknown[]>([]);
   const callbackRef = useRef(onAccident);
   callbackRef.current = onAccident;
 
   useEffect(() => {
     socketService.connect();
 
-    const unsubscribe = socketService.on(WS_EVENTS.DEVICE_ACCIDENT, (data) => {
+    const unsubscribe = socketService.on(WS_EVENTS.DEVICE_ACCIDENT, (data: unknown) => {
       console.warn('🚨 Accident Alert Received:', data);
       setAccidents((prev) => [data, ...prev].slice(0, 50));
       callbackRef.current?.(data);
@@ -74,14 +86,15 @@ export function useAccidentAlerts(onAccident?: (data: any) => void) {
  * Hook for device telemetry updates
  */
 export function useDeviceTelemetry(deviceId?: string) {
-  const [telemetry, setTelemetry] = useState<any>(null);
+  const [telemetry, setTelemetry] = useState<unknown>(null);
 
   useEffect(() => {
     socketService.connect();
 
-    const unsubscribe = socketService.on(WS_EVENTS.DEVICE_TELEMETRY, (data) => {
-      if (!deviceId || data.data?.deviceId === deviceId) {
-        setTelemetry(data);
+    const unsubscribe = socketService.on(WS_EVENTS.DEVICE_TELEMETRY, (data: unknown) => {
+      const telemetryData = data as DeviceTelemetryEvent;
+      if (!deviceId || telemetryData?.data?.deviceId === deviceId) {
+        setTelemetry(telemetryData);
       }
     });
 
@@ -100,10 +113,13 @@ export function useDeviceStatus() {
   useEffect(() => {
     socketService.connect();
 
-    const unsubscribe = socketService.on(WS_EVENTS.DEVICE_STATUS, (data) => {
+    const unsubscribe = socketService.on(WS_EVENTS.DEVICE_STATUS, (data: unknown) => {
       setStatuses((prev) => {
         const next = new Map(prev);
-        next.set(data.deviceId, data.status);
+        const statusData = data as DeviceStatusEvent;
+        if (statusData && typeof statusData === 'object' && 'deviceId' in statusData && 'status' in statusData) {
+           next.set(statusData.deviceId, statusData.status);
+        }
         return next;
       });
     });
@@ -122,15 +138,15 @@ export function useDeviceStatus() {
 /**
  * Hook for new alert notifications
  */
-export function useAlertNotifications(onAlert?: (data: any) => void) {
-  const [alerts, setAlerts] = useState<any[]>([]);
+export function useAlertNotifications(onAlert?: (data: unknown) => void) {
+  const [alerts, setAlerts] = useState<unknown[]>([]);
   const callbackRef = useRef(onAlert);
   callbackRef.current = onAlert;
 
   useEffect(() => {
     socketService.connect();
 
-    const unsubscribe = socketService.on(WS_EVENTS.ALERT_CREATED, (data) => {
+    const unsubscribe = socketService.on(WS_EVENTS.ALERT_CREATED, (data: unknown) => {
       setAlerts((prev) => [data, ...prev].slice(0, 50));
       callbackRef.current?.(data);
     });

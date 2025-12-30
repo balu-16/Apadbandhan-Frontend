@@ -57,13 +57,7 @@ const AdminDetailsModal = ({ admin, open, onOpenChange }: AdminDetailsModalProps
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
-  useEffect(() => {
-    if (open && admin) {
-      fetchLoginLogs();
-    }
-  }, [open, admin]);
-
-  const fetchLoginLogs = async () => {
+  const fetchLoginLogs = useCallback(async () => {
     if (!admin) return;
     setIsLoadingLogs(true);
     try {
@@ -76,7 +70,13 @@ const AdminDetailsModal = ({ admin, open, onOpenChange }: AdminDetailsModalProps
     } finally {
       setIsLoadingLogs(false);
     }
-  };
+  }, [admin]);
+
+  useEffect(() => {
+    if (open && admin) {
+      fetchLoginLogs();
+    }
+  }, [open, admin, fetchLoginLogs]);
 
   if (!admin) return null;
 

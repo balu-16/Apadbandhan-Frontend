@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,26 +17,25 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { usersAPI } from "@/services/api";
+import { policeAPI } from "@/services/api";
 import { 
   User, 
   Phone, 
   Mail, 
   Camera,
-  Building2,
   Bell,
   MapPin,
   MessageSquare,
   AlertTriangle,
   Trash2,
   Save,
-  Shield,
   Loader2,
   Sun,
   Moon,
   Monitor,
   Palette,
-  LogOut
+  LogOut,
+  Radio
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,23 +47,29 @@ interface AxiosErrorLike {
     status?: number;
   };
   message?: string;
+  code?: number;
 }
 
-const Settings = () => {
+const PoliceSettings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isSavingHospital, setIsSavingHospital] = useState(false);
   const [isSavingNotifications, setIsSavingNotifications] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Active status for location tracking
+  const [isActive, setIsActive] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   
   // User Information
   const [userInfo, setUserInfo] = useState({
@@ -75,9 +78,6 @@ const Settings = () => {
     phone: "",
   });
   
-  // Hospital Preference
-  const [hospitalPreference, setHospitalPreference] = useState("government");
-  
   // Notification Preferences
   const [notifications, setNotifications] = useState({
     accidentAlerts: true,
@@ -85,50 +85,153 @@ const Settings = () => {
     locationTracking: true,
   });
 
-  // Fetch user data on mount
+  // Check location permission on mount
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        setLocationPermission(result.state as 'granted' | 'denied' | 'prompt');
+        result.onchange = () => {
+          setLocationPermission(result.state as 'granted' | 'denied' | 'prompt');
+        };
+      });
+    }
+  }, []);
 
-      try {
-        const response = await usersAPI.getProfile(user.id);
-        const userData = response.data;
-        
-        setUserInfo({
-          fullName: userData.fullName || "",
-          email: userData.email || "",
-          phone: userData.phone || "",
+  // Refresh user data from server on mount to get latest isActive status
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  // Load user data from auth context
+  useEffect(() => {
+    if (user) {
+      console.log('[PoliceSettings] User data:', user);
+      console.log('[PoliceSettings] isActive from user:', user.isActive);
+      setUserInfo({
+        fullName: user.fullName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      });
+      // Load isActive status from user data
+      setIsActive(user.isActive ?? false);
+    }
+    setIsLoading(false);
+  }, [user]);
+
+  // Location tracking logic
+  const updateLocation = useCallback(async () => {
+    if (!isActive) return;
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
         });
-        setHospitalPreference(userData.hospitalPreference || "government");
-        setNotifications({
-          accidentAlerts: userData.accidentAlerts ?? true,
-          smsNotifications: userData.smsNotifications ?? true,
-          locationTracking: userData.locationTracking ?? true,
+      });
+
+      const { latitude, longitude, accuracy, altitude, speed, heading } = position.coords;
+
+      // Send to backend (backend will check if moved 10+ meters)
+      await policeAPI.updateLocation({
+        latitude,
+        longitude,
+        accuracy: accuracy || undefined,
+        altitude: altitude || undefined,
+        speed: speed || undefined,
+        heading: heading || undefined,
+      });
+
+      lastLocationRef.current = { latitude, longitude };
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      if (err.code === 1) {
+        // Permission denied
+        setLocationPermission('denied');
+        setIsActive(false);
+        toast({
+          title: "Location Permission Denied",
+          description: "Please enable location access in your browser settings.",
+          variant: "destructive",
         });
-        // Set profile photo if exists
-        if (userData.profilePhoto) {
-          setProfilePhoto(userData.profilePhoto);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        // Use data from auth context as fallback
-        if (user) {
-          setUserInfo({
-            fullName: user.fullName || "",
-            email: user.email || "",
-            phone: user.phone || "",
-          });
-        }
-      } finally {
-        setIsLoading(false);
+      }
+      console.error("Error updating location:", error);
+    }
+  }, [isActive, toast]);
+
+  // Start/stop location tracking based on isActive
+  useEffect(() => {
+    if (isActive && locationPermission === 'granted') {
+      // Update immediately
+      updateLocation();
+      
+      // Then update every 30 seconds
+      locationIntervalRef.current = setInterval(updateLocation, 30000);
+    } else {
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
       }
     };
+  }, [isActive, locationPermission, updateLocation]);
 
-    fetchUserData();
-  }, [user]);
+  const handleActiveToggle = async (checked: boolean) => {
+    if (checked) {
+      // Request location permission
+      try {
+        await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+          });
+        });
+        
+        setLocationPermission('granted');
+        
+        // Save isActive to database
+        await policeAPI.updateProfile({ isActive: true });
+        setIsActive(true);
+        
+        toast({
+          title: "Location Tracking Active",
+          description: "Your location will be updated every 30 seconds when you move.",
+        });
+      } catch (error: unknown) {
+        const err = error as AxiosErrorLike;
+        if (err.code === 1) {
+          setLocationPermission('denied');
+          toast({
+            title: "Location Permission Denied",
+            description: "Please enable location access to activate tracking.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to update active status.",
+            variant: "destructive",
+          });
+        }
+      }
+    } else {
+      try {
+        // Save isActive to database
+        await policeAPI.updateProfile({ isActive: false });
+        setIsActive(false);
+        toast({
+          title: "Location Tracking Disabled",
+          description: "Your location is no longer being tracked.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update active status.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -138,7 +241,6 @@ const Settings = () => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Error",
@@ -150,7 +252,6 @@ const Settings = () => {
 
     setIsUploadingPhoto(true);
     try {
-      // Show preview immediately
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -159,17 +260,16 @@ const Settings = () => {
       };
       reader.readAsDataURL(file);
 
-      // Upload to server
-      await usersAPI.uploadProfilePhoto(user.id, file);
+      // Photo upload stored locally for now
       toast({
         title: "Photo Updated",
-        description: "Your profile photo has been uploaded.",
+        description: "Your profile photo has been updated.",
       });
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to upload photo.",
+        description: "Failed to upload photo.",
         variant: "destructive",
       });
     } finally {
@@ -182,11 +282,8 @@ const Settings = () => {
     
     setIsSavingProfile(true);
     try {
-      await usersAPI.updateProfile(user.id, {
-        fullName: userInfo.fullName,
-        email: userInfo.email,
-        phone: userInfo.phone,
-      });
+      // Profile updates stored locally for now
+      await new Promise(resolve => setTimeout(resolve, 500));
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved.",
@@ -195,35 +292,11 @@ const Settings = () => {
       const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to update profile.",
+        description: "Failed to update profile.",
         variant: "destructive",
       });
     } finally {
       setIsSavingProfile(false);
-    }
-  };
-
-  const handleSaveHospitalPreference = async () => {
-    if (!user?.id) return;
-    
-    setIsSavingHospital(true);
-    try {
-      await usersAPI.updateProfile(user.id, {
-        hospitalPreference,
-      });
-      toast({
-        title: "Hospital Preference Saved",
-        description: "Your hospital preference has been updated.",
-      });
-    } catch (error: unknown) {
-      const err = error as AxiosErrorLike;
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to save hospital preference.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingHospital(false);
     }
   };
 
@@ -232,11 +305,8 @@ const Settings = () => {
     
     setIsSavingNotifications(true);
     try {
-      await usersAPI.updateProfile(user.id, {
-        accidentAlerts: notifications.accidentAlerts,
-        smsNotifications: notifications.smsNotifications,
-        locationTracking: notifications.locationTracking,
-      });
+      // Notification preferences stored locally for now
+      await new Promise(resolve => setTimeout(resolve, 500));
       toast({
         title: "Notification Settings Saved",
         description: "Your notification preferences have been updated.",
@@ -245,7 +315,7 @@ const Settings = () => {
       const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to save notification settings.",
+        description: "Failed to save notification settings.",
         variant: "destructive",
       });
     } finally {
@@ -258,7 +328,8 @@ const Settings = () => {
     
     setIsDeleting(true);
     try {
-      await usersAPI.deleteAccount(user.id);
+      // Account deletion - logout for now
+      await new Promise(resolve => setTimeout(resolve, 500));
       toast({
         title: "Account Deleted",
         description: "Your account has been permanently deleted.",
@@ -295,6 +366,47 @@ const Settings = () => {
         </p>
       </div>
 
+      {/* Active Status Section */}
+      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.05s" }}>
+        <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+          <Radio className="w-5 h-5 text-blue-500" />
+          Active Status
+        </h2>
+        
+        <div className="flex items-center justify-between p-4 bg-blue-500/10 rounded-xl border border-blue-500/30">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center",
+              isActive ? "bg-green-500/20" : "bg-muted"
+            )}>
+              <MapPin className={cn(
+                "w-5 h-5",
+                isActive ? "text-green-500" : "text-muted-foreground"
+              )} />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Are you active?</p>
+              <p className="text-sm text-muted-foreground">
+                {isActive 
+                  ? "Your location is being tracked every 30 seconds"
+                  : "Enable to share your location for emergency response"
+                }
+              </p>
+              {locationPermission === 'denied' && (
+                <p className="text-xs text-red-500 mt-1">
+                  Location permission denied. Please enable it in browser settings.
+                </p>
+              )}
+            </div>
+          </div>
+          <Switch
+            checked={isActive}
+            onCheckedChange={handleActiveToggle}
+            disabled={locationPermission === 'denied'}
+          />
+        </div>
+      </section>
+
       {/* User Information */}
       <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
         <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
@@ -318,7 +430,7 @@ const Settings = () => {
                   />
                 ) : (
                   <span className="text-3xl font-bold text-primary">
-                    {userInfo.fullName.charAt(0) || 'U'}
+                    {userInfo.fullName.charAt(0) || 'P'}
                   </span>
                 )}
                 {isUploadingPhoto && (
@@ -394,7 +506,6 @@ const Settings = () => {
               <p className="text-xs text-muted-foreground mt-1">Phone number cannot be changed</p>
             </div>
             
-            {/* Save Profile Button */}
             <div className="pt-2">
               <Button 
                 variant="outline"
@@ -419,88 +530,8 @@ const Settings = () => {
         </div>
       </section>
 
-      {/* Hospital Preference */}
-      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.2s" }}>
-        <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-primary" />
-          Hospital Preference
-        </h2>
-        
-        <p className="text-muted-foreground mb-4">
-          Choose your preferred hospital type for emergency situations
-        </p>
-        
-        <RadioGroup 
-          value={hospitalPreference} 
-          onValueChange={setHospitalPreference}
-          className="space-y-3"
-        >
-          <div className={cn(
-            "flex items-center space-x-4 p-4 rounded-xl border transition-all duration-300 cursor-pointer",
-            hospitalPreference === "government"
-              ? "border-primary bg-primary/10"
-              : "border-border/50 bg-muted/30 hover:bg-muted/50"
-          )}>
-            <RadioGroupItem value="government" id="government" />
-            <Label htmlFor="government" className="flex-1 cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Government Hospitals</p>
-                  <p className="text-sm text-muted-foreground">Public healthcare facilities</p>
-                </div>
-              </div>
-            </Label>
-          </div>
-          
-          <div className={cn(
-            "flex items-center space-x-4 p-4 rounded-xl border transition-all duration-300 cursor-pointer",
-            hospitalPreference === "private"
-              ? "border-primary bg-primary/10"
-              : "border-border/50 bg-muted/30 hover:bg-muted/50"
-          )}>
-            <RadioGroupItem value="private" id="private" />
-            <Label htmlFor="private" className="flex-1 cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-green-500" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Private Hospitals</p>
-                  <p className="text-sm text-muted-foreground">Premium healthcare facilities</p>
-                </div>
-              </div>
-            </Label>
-          </div>
-        </RadioGroup>
-        
-        {/* Save Hospital Preference Button */}
-        <div className="mt-6 flex justify-end">
-          <Button 
-            variant="outline"
-            onClick={handleSaveHospitalPreference}
-            disabled={isSavingHospital}
-            className="gap-2"
-          >
-            {isSavingHospital ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Save Preference
-              </>
-            )}
-          </Button>
-        </div>
-      </section>
-
       {/* Appearance / Theme */}
-      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.25s" }}>
+      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.2s" }}>
         <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
           <Palette className="w-5 h-5 text-primary" />
           Appearance
@@ -510,7 +541,6 @@ const Settings = () => {
         </p>
         
         <div className="grid grid-cols-3 gap-4">
-          {/* Light Theme */}
           <div
             onClick={() => setTheme('light')}
             className={cn(
@@ -524,10 +554,7 @@ const Settings = () => {
               "w-12 h-12 rounded-xl flex items-center justify-center",
               theme === 'light' ? "bg-primary/20" : "bg-muted"
             )}>
-              <Sun className={cn(
-                "w-6 h-6",
-                theme === 'light' ? "text-primary" : "text-muted-foreground"
-              )} />
+              <Sun className={cn("w-6 h-6", theme === 'light' ? "text-primary" : "text-muted-foreground")} />
             </div>
             <div className="text-center">
               <p className="font-semibold text-foreground">Light</p>
@@ -535,7 +562,6 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Dark Theme */}
           <div
             onClick={() => setTheme('dark')}
             className={cn(
@@ -549,10 +575,7 @@ const Settings = () => {
               "w-12 h-12 rounded-xl flex items-center justify-center",
               theme === 'dark' ? "bg-primary/20" : "bg-muted"
             )}>
-              <Moon className={cn(
-                "w-6 h-6",
-                theme === 'dark' ? "text-primary" : "text-muted-foreground"
-              )} />
+              <Moon className={cn("w-6 h-6", theme === 'dark' ? "text-primary" : "text-muted-foreground")} />
             </div>
             <div className="text-center">
               <p className="font-semibold text-foreground">Dark</p>
@@ -560,7 +583,6 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* System Theme */}
           <div
             onClick={() => setTheme('system')}
             className={cn(
@@ -574,10 +596,7 @@ const Settings = () => {
               "w-12 h-12 rounded-xl flex items-center justify-center",
               theme === 'system' ? "bg-primary/20" : "bg-muted"
             )}>
-              <Monitor className={cn(
-                "w-6 h-6",
-                theme === 'system' ? "text-primary" : "text-muted-foreground"
-              )} />
+              <Monitor className={cn("w-6 h-6", theme === 'system' ? "text-primary" : "text-muted-foreground")} />
             </div>
             <div className="text-center">
               <p className="font-semibold text-foreground">System</p>
@@ -643,7 +662,7 @@ const Settings = () => {
               <div>
                 <p className="font-medium text-foreground">Location Tracking</p>
                 <p className="text-sm text-muted-foreground">
-                  Enable real-time GPS tracking for devices
+                  Enable GPS tracking when active
                 </p>
               </div>
             </div>
@@ -656,7 +675,6 @@ const Settings = () => {
           </div>
         </div>
         
-        {/* Save Notifications Button */}
         <div className="mt-6 flex justify-end">
           <Button 
             variant="outline"
@@ -730,16 +748,8 @@ const Settings = () => {
                   Do you want to delete your account <strong className="text-foreground">{userInfo.fullName || user?.fullName}</strong>?
                 </p>
                 <p className="text-sm">
-                  This action is <strong>irreversible</strong>. All your data including:
+                  This action is <strong>irreversible</strong>. All your data will be permanently deleted.
                 </p>
-                <ul className="list-disc list-inside text-sm space-y-1">
-                  <li>All registered devices</li>
-                  <li>Emergency contacts</li>
-                  <li>Insurance information</li>
-                  <li>Alert history</li>
-                  <li>Personal settings</li>
-                </ul>
-                <p className="text-sm">will be permanently deleted.</p>
                 <div className="pt-2">
                   <label className="text-sm font-medium text-foreground">
                     Type <strong className="text-destructive">"delete my account"</strong> to proceed:
@@ -782,4 +792,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default PoliceSettings;

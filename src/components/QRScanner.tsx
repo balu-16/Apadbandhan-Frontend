@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Camera, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,18 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }: QRScannerProps) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const startScanning = async () => {
+  const stopScanning = useCallback(async () => {
+    if (scannerRef.current && isScanning) {
+      try {
+        await scannerRef.current.stop();
+        setIsScanning(false);
+      } catch (err) {
+        console.error('Error stopping scanner:', err);
+      }
+    }
+  }, [isScanning]);
+
+  const startScanning = useCallback(async () => {
     setError(null);
     
     try {
@@ -52,40 +63,33 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }: QRScannerProps) => {
           console.log('Scan error:', errorMessage);
         }
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Camera error:', err);
       setHasPermission(false);
       
-      if (err.name === 'NotAllowedError') {
+      const errorObj = err as Error;
+      const errorMessage = errorObj.message || 'Unknown error';
+      const errorName = errorObj.name;
+
+      if (errorName === 'NotAllowedError') {
         setError('Camera permission denied. Please allow camera access to scan QR codes.');
-      } else if (err.name === 'NotFoundError') {
+      } else if (errorName === 'NotFoundError') {
         setError('No camera found on this device.');
       } else {
-        setError(`Camera error: ${err.message || 'Unknown error'}`);
+        setError(`Camera error: ${errorMessage}`);
       }
       
       if (onScanError) {
-        onScanError(err.message);
+        onScanError(errorMessage);
       }
     }
-  };
-
-  const stopScanning = async () => {
-    if (scannerRef.current && isScanning) {
-      try {
-        await scannerRef.current.stop();
-        setIsScanning(false);
-      } catch (err) {
-        console.error('Error stopping scanner:', err);
-      }
-    }
-  };
+  }, [onScanError, onScanSuccess, stopScanning]);
 
   useEffect(() => {
     return () => {
       stopScanning();
     };
-  }, []);
+  }, [stopScanning]);
 
   return (
     <div className="relative w-full">

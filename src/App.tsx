@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
+import BecomePartner from "./pages/BecomePartner";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import AdminLayout from "./components/admin/AdminLayout";
 import { PoliceLayout } from "./components/police";
@@ -30,8 +31,12 @@ import {
   HospitalManagement,
   AllDevices,
 } from "./pages/admin";
+import PartnerRequests from "./pages/admin/PartnerRequests";
+import AdminSettings from "./pages/admin/AdminSettings";
 import { PoliceDashboard } from "./pages/police";
+import PoliceSettings from "./pages/police/PoliceSettings";
 import { HospitalDashboard } from "./pages/hospital";
+import HospitalSettings from "./pages/hospital/HospitalSettings";
 import { AlertsPage, UsersReadOnlyPage } from "./pages/shared";
 
 const queryClient = new QueryClient();
@@ -54,6 +59,7 @@ const App = () => (
                 <Route path="/login" element={<Auth />} />
                 <Route path="/signup" element={<Auth />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/become-partner" element={<BecomePartner />} />
               </Route>
 
               {/* Protected Dashboard Routes (Regular users only) */}
@@ -73,7 +79,9 @@ const App = () => (
                   <Route index element={<AdminDashboard />} />
                   <Route path="users" element={<UsersManagement />} />
                   <Route path="devices" element={<AllDevices />} />
+                  <Route path="requests" element={<PartnerRequests />} />
                   <Route path="alerts" element={<AlertsPage portalType="admin" />} />
+                  <Route path="settings" element={<AdminSettings />} />
                 </Route>
               </Route>
 
@@ -86,7 +94,9 @@ const App = () => (
                   <Route path="police" element={<PoliceManagement />} />
                   <Route path="hospitals" element={<HospitalManagement />} />
                   <Route path="devices" element={<AllDevices />} />
+                  <Route path="requests" element={<PartnerRequests />} />
                   <Route path="alerts" element={<AlertsPage portalType="superadmin" />} />
+                  <Route path="settings" element={<AdminSettings />} />
                 </Route>
               </Route>
 
@@ -96,6 +106,7 @@ const App = () => (
                   <Route index element={<PoliceDashboard />} />
                   <Route path="users" element={<UsersReadOnlyPage portalType="police" />} />
                   <Route path="alerts" element={<AlertsPage portalType="police" />} />
+                  <Route path="settings" element={<PoliceSettings />} />
                 </Route>
               </Route>
 
@@ -105,6 +116,7 @@ const App = () => (
                   <Route index element={<HospitalDashboard />} />
                   <Route path="users" element={<UsersReadOnlyPage portalType="hospital" />} />
                   <Route path="alerts" element={<AlertsPage portalType="hospital" />} />
+                  <Route path="settings" element={<HospitalSettings />} />
                 </Route>
               </Route>
 
