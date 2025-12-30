@@ -168,6 +168,10 @@ export const deviceLocationsAPI = {
 
   // Delete all locations for a device
   deleteByDevice: (deviceId: string) => api.delete(`/device-locations/device/${deviceId}`),
+
+  // Backfill addresses for locations without address data
+  backfillAddresses: (deviceId: string, limit?: number) => 
+    api.post(`/device-locations/device/${deviceId}/backfill-addresses`, null, { params: { limit } }),
 };
 
 // Admin API
@@ -226,8 +230,8 @@ export const adminAPI = {
 
 // Police API
 export const policeAPI = {
-  // Update profile (isActive, etc)
-  updateProfile: (data: { isActive?: boolean; fullName?: string }) => 
+  // Update profile (onDuty, etc)
+  updateProfile: (data: { isActive?: boolean; onDuty?: boolean; fullName?: string }) => 
     api.patch('/police/profile', data),
 
   // Get all users (read-only)
@@ -266,8 +270,8 @@ export const policeAPI = {
 
 // Hospital API
 export const hospitalAPI = {
-  // Update profile (isActive, etc)
-  updateProfile: (data: { isActive?: boolean; fullName?: string }) => 
+  // Update profile (onDuty, etc)
+  updateProfile: (data: { isActive?: boolean; onDuty?: boolean; fullName?: string }) => 
     api.patch('/hospital/profile', data),
 
   // Get all users (read-only)

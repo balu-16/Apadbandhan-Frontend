@@ -15,6 +15,7 @@ interface User {
   smsNotifications?: boolean;
   locationTracking?: boolean;
   isActive?: boolean;
+  onDuty?: boolean;
 }
 
 interface AuthContextType {

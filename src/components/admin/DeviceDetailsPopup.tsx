@@ -90,6 +90,9 @@ interface LocationHistory {
   address?: string;
   city?: string;
   state?: string;
+  pincode?: string;
+  country?: string;
+  displayName?: string;
   speed?: number;
   heading?: number;
   recordedAt: string;
@@ -750,7 +753,9 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                             {index === 0 ? "🏁" : index === locationHistory.length - 1 ? "🟢" : "📍"}
                           </span>
                           <div>
-                            <p className="font-medium">{loc.city || loc.address || 'Unknown location'}</p>
+                            <p className="font-medium break-words">
+                              {loc.address || loc.displayName || loc.city || 'Unknown location'}
+                            </p>
                             <p className="text-xs text-muted-foreground font-mono">
                               {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
                             </p>

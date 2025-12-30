@@ -44,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -208,14 +208,21 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  <Marker position={[alert.location!.latitude, alert.location!.longitude]}>
+                  <CircleMarker 
+                    center={[alert.location!.latitude, alert.location!.longitude]}
+                    radius={12}
+                    fillColor="#ef4444"
+                    fillOpacity={0.9}
+                    color="white"
+                    weight={3}
+                  >
                     <Popup>
                       <div className="text-center">
                         <p className="font-semibold text-red-600">🚨 {alert.source === 'sos' ? 'SOS' : 'Alert'} Location</p>
                         <p className="text-xs mt-1">{user?.fullName || 'User in Distress'}</p>
                       </div>
                     </Popup>
-                  </Marker>
+                  </CircleMarker>
                 </MapContainer>
               </div>
 

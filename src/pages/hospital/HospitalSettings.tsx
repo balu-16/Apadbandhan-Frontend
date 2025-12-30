@@ -64,8 +64,8 @@ const HospitalSettings = () => {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Active status for location tracking
-  const [isActive, setIsActive] = useState(false);
+  // On Duty status for location tracking
+  const [onDuty, setOnDuty] = useState(false);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
@@ -110,15 +110,15 @@ const HospitalSettings = () => {
         email: user.email || "",
         phone: user.phone || "",
       });
-      // Load isActive status from user data
-      setIsActive(user.isActive ?? false);
+      // Load onDuty status from user data
+      setOnDuty(user.onDuty ?? false);
     }
     setIsLoading(false);
   }, [user]);
 
   // Location tracking logic
   const updateLocation = useCallback(async () => {
-    if (!isActive) return;
+    if (!onDuty) return;
 
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -146,7 +146,7 @@ const HospitalSettings = () => {
       const err = error as AxiosErrorLike;
       if (err.code === 1) {
         setLocationPermission('denied');
-        setIsActive(false);
+        setOnDuty(false);
         toast({
           title: "Location Permission Denied",
           description: "Please enable location access in your browser settings.",
@@ -155,11 +155,11 @@ const HospitalSettings = () => {
       }
       console.error("Error updating location:", error);
     }
-  }, [isActive, toast]);
+  }, [onDuty, toast]);
 
   // Start/stop location tracking based on isActive
   useEffect(() => {
-    if (isActive && locationPermission === 'granted') {
+    if (onDuty && locationPermission === 'granted') {
       updateLocation();
       locationIntervalRef.current = setInterval(updateLocation, 30000);
     } else {
@@ -174,7 +174,7 @@ const HospitalSettings = () => {
         clearInterval(locationIntervalRef.current);
       }
     };
-  }, [isActive, locationPermission, updateLocation]);
+  }, [onDuty, locationPermission, updateLocation]);
 
   const handleActiveToggle = async (checked: boolean) => {
     if (checked) {
@@ -188,9 +188,9 @@ const HospitalSettings = () => {
         
         setLocationPermission('granted');
         
-        // Save isActive to database
-        await hospitalAPI.updateProfile({ isActive: true });
-        setIsActive(true);
+        // Save onDuty to database
+        await hospitalAPI.updateProfile({ onDuty: true });
+        setOnDuty(true);
         
         toast({
           title: "Location Tracking Active",
@@ -215,9 +215,9 @@ const HospitalSettings = () => {
       }
     } else {
       try {
-        // Save isActive to database
-        await hospitalAPI.updateProfile({ isActive: false });
-        setIsActive(false);
+        // Save onDuty to database
+        await hospitalAPI.updateProfile({ onDuty: false });
+        setOnDuty(false);
         toast({
           title: "Location Tracking Disabled",
           description: "Your location is no longer being tracked.",
@@ -372,17 +372,17 @@ const HospitalSettings = () => {
           <div className="flex items-center gap-3">
             <div className={cn(
               "w-10 h-10 rounded-xl flex items-center justify-center",
-              isActive ? "bg-green-500/20" : "bg-muted"
+              onDuty ? "bg-green-500/20" : "bg-muted"
             )}>
               <MapPin className={cn(
                 "w-5 h-5",
-                isActive ? "text-green-500" : "text-muted-foreground"
+                onDuty ? "text-green-500" : "text-muted-foreground"
               )} />
             </div>
             <div>
-              <p className="font-medium text-foreground">Are you active?</p>
+              <p className="font-medium text-foreground">Are you on duty?</p>
               <p className="text-sm text-muted-foreground">
-                {isActive 
+                {onDuty 
                   ? "Your location is being tracked every 30 seconds"
                   : "Enable to share your location for emergency response"
                 }
@@ -395,7 +395,7 @@ const HospitalSettings = () => {
             </div>
           </div>
           <Switch
-            checked={isActive}
+            checked={onDuty}
             onCheckedChange={handleActiveToggle}
             disabled={locationPermission === 'denied'}
           />

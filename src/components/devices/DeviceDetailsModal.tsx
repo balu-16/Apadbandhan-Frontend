@@ -118,6 +118,9 @@ interface LocationHistory {
   address?: string;
   city?: string;
   state?: string;
+  pincode?: string;
+  country?: string;
+  displayName?: string;
   speed?: number;
   heading?: number;
   recordedAt: string;
@@ -319,6 +322,24 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   const handleManualRefresh = useCallback(() => {
     fetchLocationHistory(false);
   }, [fetchLocationHistory]);
+
+  // Backfill addresses for locations without address data
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const handleBackfillAddresses = useCallback(async () => {
+    const deviceId = getDeviceId();
+    if (!deviceId) return;
+
+    setIsBackfilling(true);
+    try {
+      await deviceLocationsAPI.backfillAddresses(deviceId, 100);
+      // Refresh location history to show updated addresses
+      await fetchLocationHistory(false);
+    } catch (error) {
+      console.error('Failed to backfill addresses:', error);
+    } finally {
+      setIsBackfilling(false);
+    }
+  }, [getDeviceId, fetchLocationHistory]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -923,16 +944,30 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   <Clock className="w-4 h-4 text-primary" />
                   Location History
                 </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleManualRefresh}
-                  disabled={isRefreshing || isLoadingLocations}
-                  className="gap-1"
-                >
-                  <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
-                  Refresh
-                </Button>
+                <div className="flex items-center gap-2">
+                  {locationHistory.some(loc => !loc.address && !loc.city) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleBackfillAddresses}
+                      disabled={isBackfilling || isRefreshing || isLoadingLocations}
+                      className="gap-1"
+                    >
+                      <MapPin className={cn("w-4 h-4", isBackfilling && "animate-pulse")} />
+                      {isBackfilling ? "Loading..." : "Get Addresses"}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing || isLoadingLocations}
+                    className="gap-1"
+                  >
+                    <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+                    Refresh
+                  </Button>
+                </div>
               </div>
 
               {isLoadingLocations ? (
@@ -965,8 +1000,8 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                           <p className="font-medium">
                             {index === 0 ? "Current Location" : index === locationHistory.length - 1 ? "Start Point" : `Waypoint ${locationHistory.length - index - 1}`}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            {loc.city || loc.address || 'Unknown location'}
+                          <p className="text-sm text-muted-foreground break-words">
+                            {loc.address || loc.displayName || loc.city || 'Unknown location'}
                           </p>
                           <p className="text-xs text-muted-foreground font-mono">
                             {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
