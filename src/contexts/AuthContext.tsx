@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { authAPI } from '@/services/api';
 
 export type UserRole = 'user' | 'admin' | 'superadmin' | 'police' | 'hospital';
@@ -52,26 +52,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(false);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = useCallback((newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem('auth_token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
-  };
+  }, []);
 
-  const updateUser = (updatedUser: User) => {
+  const updateUser = useCallback((updatedUser: User) => {
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const response = await authAPI.getProfile();
       const updatedUser = response.data;
@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Failed to refresh user:', error);
     }
-  };
+  }, []);
 
   // Role helpers
   const userRole = user?.role || null;

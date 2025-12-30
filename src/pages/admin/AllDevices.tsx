@@ -1,8 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import {
   Smartphone,
   Search,
@@ -33,7 +42,7 @@ interface AxiosErrorLike {
 }
 
 interface AssignedUser {
-  id: string;
+  id?: string;
   fullName: string;
   email: string;
   phone: string;
@@ -52,17 +61,17 @@ interface QrCodeDevice {
 }
 
 interface RegisteredDevice {
-  _id: string;
-  id: string;
+  _id?: string | { $oid: string };
+  id?: string;
   name: string;
   code: string;
   type: string;
   status: string;
-  batteryLevel: number;
-  userId: string | { _id: string; fullName?: string; name?: string; phone?: string; email?: string };
+  batteryLevel?: number;
+  userId?: AssignedUser | string;
   location?: {
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
     address?: string;
   };
   isActive: boolean;
@@ -378,7 +387,7 @@ const AllDevices = () => {
                 <div className="space-y-3">
                   {filteredRegisteredDevices.map((device) => (
                     <Card
-                      key={device._id || device.id}
+                      key={typeof device._id === 'string' ? device._id : device._id?.$oid || device.id}
                       className="bg-muted/30 border-border/50 cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all duration-200"
                       onClick={() => {
                         setSelectedDevice(device);

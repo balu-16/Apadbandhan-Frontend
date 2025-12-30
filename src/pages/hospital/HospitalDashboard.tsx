@@ -122,7 +122,7 @@ const HospitalDashboard = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full">
       {/* Header */}
       <div className="mb-8 animate-fade-up">
         <div className="flex items-center gap-3 mb-2">

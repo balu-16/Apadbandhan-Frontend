@@ -115,7 +115,7 @@ const DeviceDetails = () => {
 
   if (!device) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-16">
+      <div className="w-full text-center py-16">
         <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted/50 flex items-center justify-center">
           <Smartphone className="w-12 h-12 text-muted-foreground" />
         </div>
@@ -145,7 +145,7 @@ const DeviceDetails = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-full">
       {/* Back Button */}
       <Link 
         to="/dashboard/devices" 

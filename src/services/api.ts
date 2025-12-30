@@ -129,7 +129,11 @@ export const devicesAPI = {
 export const alertsAPI = {
   getAll: (params?: { status?: string; limit?: number; skip?: number }) => 
     api.get('/alerts', { params }),
+  // Combined alerts and SOS events with optional filter
+  getCombined: (source: 'all' | 'alert' | 'sos' = 'all') => 
+    api.get('/alerts/combined', { params: { source } }),
   getStats: () => api.get('/alerts/stats'),
+  getCombinedStats: () => api.get('/alerts/stats/combined'),
   getByDevice: (deviceId: string) => api.get(`/alerts/device/${deviceId}`),
   getById: (id: string) => api.get(`/alerts/${id}`),
   create: (data: AlertData) => api.post('/alerts', data),

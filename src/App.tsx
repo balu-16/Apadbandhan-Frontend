@@ -23,6 +23,7 @@ import {
   DeviceDetails,
   Settings
 } from "./pages/dashboard";
+import UserAlertsPage from "./pages/dashboard/UserAlertsPage";
 import {
   AdminDashboard,
   UsersManagement,
@@ -69,6 +70,7 @@ const App = () => (
                   <Route path="add-device" element={<AddDevice />} />
                   <Route path="devices" element={<Devices />} />
                   <Route path="devices/:id" element={<DeviceDetails />} />
+                  <Route path="alerts" element={<UserAlertsPage />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
               </Route>

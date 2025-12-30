@@ -4,6 +4,7 @@ import {
   Home, 
   PlusCircle, 
   Smartphone, 
+  Bell,
   Settings,
   LogOut
 } from "lucide-react";
@@ -19,6 +20,7 @@ const navItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/dashboard" },
   { icon: PlusCircle, label: "Add Device", path: "/dashboard/add-device" },
   { icon: Smartphone, label: "Devices", path: "/dashboard/devices" },
+  { icon: Bell, label: "My Alerts", path: "/dashboard/alerts" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 

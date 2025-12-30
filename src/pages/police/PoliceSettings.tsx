@@ -100,7 +100,8 @@ const PoliceSettings = () => {
   // Refresh user data from server on mount to get latest isActive status
   useEffect(() => {
     refreshUser();
-  }, [refreshUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Load user data from auth context
   useEffect(() => {

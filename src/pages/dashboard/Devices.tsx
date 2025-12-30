@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn, formatTimeAgo } from "@/lib/utils";
-import { devicesAPI, deviceLocationsAPI } from "@/services/api";
+import { devicesAPI, deviceLocationsAPI, sosAPI } from "@/services/api";
 import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { useToast } from "@/hooks/use-toast";
 import DeviceDetailsModal from "@/components/devices/DeviceDetailsModal";
@@ -268,6 +268,13 @@ const Devices = () => {
     }
 
     try {
+      // Call SOS API to create SOS event and find responders
+      const sosResponse = await sosAPI.trigger({
+        lat: location.latitude,
+        lng: location.longitude,
+      });
+
+      // Also save location with SOS flag
       await deviceLocationsAPI.create({
         deviceId: device._id,
         latitude: location.latitude,
@@ -276,9 +283,13 @@ const Devices = () => {
         source: 'browser',
         isSOS: true,
       });
+
+      const respondersFound = sosResponse.data?.responders?.totalFound || 0;
       toast({
         title: "🚨 SOS Triggered",
-        description: `Emergency location recorded for ${device.name}`,
+        description: respondersFound > 0 
+          ? `Emergency alert sent! ${respondersFound} responders notified.`
+          : `Emergency location recorded for ${device.name}. Searching for responders...`,
       });
     } catch (error) {
       console.error('Failed to trigger SOS:', error);
@@ -361,7 +372,7 @@ const Devices = () => {
   const offlineCount = devices.filter(d => d.status === "offline").length;
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-fade-up">
         <div>
