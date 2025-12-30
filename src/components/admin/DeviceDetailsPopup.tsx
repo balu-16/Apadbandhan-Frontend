@@ -294,24 +294,6 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
     };
   }, [open, device, isQrCode, regDevice?.status, fetchLocationHistory]);
 
-  const fetchQrCodeForDevice = async () => {
-    if (!regDevice.code) return;
-    setIsLoadingQr(true);
-    try {
-      const response = await adminAPI.getQrCodeByDeviceCode(regDevice.code);
-      if (response.data && response.data.qrImageUrl) {
-        setQrCodeUrl(response.data.qrImageUrl);
-      } else {
-        setQrCodeUrl(null);
-      }
-    } catch (error) {
-      console.error("Failed to fetch QR code:", error);
-      setQrCodeUrl(null);
-    } finally {
-      setIsLoadingQr(false);
-    }
-  };
-
   const handleManualRefresh = useCallback(() => {
     fetchLocationHistory(false);
   }, [fetchLocationHistory]);
@@ -333,6 +315,13 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
       month: "short",
       year: "numeric",
     });
+  };
+
+  // Helper to get device ID as string (handles MongoDB $oid format)
+  const getDeviceIdString = (id: string | { $oid: string } | undefined): string => {
+    if (!id) return '';
+    if (typeof id === 'object' && '$oid' in id) return id.$oid;
+    return String(id);
   };
 
   const getStatusColor = (status: string) => {
@@ -515,7 +504,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                   <h3 className="font-semibold text-foreground mb-2 text-sm uppercase tracking-wider">System Information</h3>
                   <div className="bg-background/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground mb-1">Device ID</p>
-                    <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">{device._id || device.id}</code>
+                    <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">{getDeviceIdString(device._id) || device.id}</code>
                   </div>
                 </div>
 
@@ -598,7 +587,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                           <div className="flex-1">
                             <p className="font-semibold text-sm">
                               {typeof regDevice.userId === 'object' 
-                                ? (regDevice.userId.fullName || regDevice.userId.name || 'Unknown User')
+                                ? (regDevice.userId.fullName || 'Unknown User')
                                 : 'User ID: ' + regDevice.userId}
                             </p>
                             {typeof regDevice.userId === 'object' && (
@@ -640,7 +629,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                       <h3 className="font-semibold text-foreground mb-2 text-sm uppercase tracking-wider">System Information</h3>
                       <div className="bg-background/50 rounded-lg p-3">
                         <p className="text-xs text-muted-foreground mb-1">Device ID</p>
-                        <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">{device._id || device.id}</code>
+                        <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">{getDeviceIdString(device._id) || device.id}</code>
                       </div>
                     </div>
                   </div>
