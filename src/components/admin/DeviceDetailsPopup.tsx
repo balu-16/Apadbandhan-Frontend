@@ -756,9 +756,14 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                             <p className="font-medium break-words">
                               {loc.address || loc.displayName || loc.city || 'Unknown location'}
                             </p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
-                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="font-mono">{loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}</span>
+                              {loc.pincode && (
+                                <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                                  📮 {loc.pincode}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="text-right">
