@@ -458,6 +458,14 @@ export const sosAPI = {
   // Get all active SOS events (admin/responder)
   getActive: () => 
     api.get('/sos/active'),
+
+  // Respond to an SOS event (police/hospital only)
+  respond: (sosId: string) => 
+    api.post(`/sos/respond/${sosId}`),
+
+  // Get responders info for an SOS event
+  getResponders: (sosId: string) => 
+    api.get(`/sos/responders/${sosId}`),
 };
 
 // On-Duty API (for police/hospital)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { alertsAPI } from "@/services/api";
+import { alertsAPI, sosAPI } from "@/services/api";
+import { toast } from "sonner";
 import { 
   Bell,
   AlertTriangle,
@@ -26,7 +27,10 @@ import {
   Navigation,
   Droplets,
   AlertCircle,
-  Home
+  Home,
+  HandHelping,
+  Building2,
+  BadgeCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -86,6 +90,14 @@ interface UserInfo {
   devices?: DeviceInfo[];
 }
 
+interface RespondedByInfo {
+  responderId: string;
+  role: 'police' | 'hospital';
+  name: string;
+  phone: string;
+  respondedAt: string;
+}
+
 interface Alert {
   _id: string;
   deviceId?: string | { _id: string; name: string; code: string };
@@ -101,6 +113,8 @@ interface Alert {
   };
   createdAt: string;
   resolvedAt?: string;
+  respondedBy?: RespondedByInfo[];
+  currentSearchRadius?: number;
 }
 
 type SourceFilter = 'all' | 'alert' | 'sos';
@@ -445,6 +459,77 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
             </div>
           )}
 
+          {/* Responders Section */}
+          {alert.respondedBy && alert.respondedBy.length > 0 && (
+            <div className="bg-muted/30 rounded-xl p-4">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
+                <HandHelping className="w-4 h-4 text-green-500" />
+                Responders ({alert.respondedBy.length})
+              </h3>
+              <div className="space-y-2">
+                {alert.respondedBy.map((responder, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-background/50 rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-lg flex items-center justify-center",
+                        responder.role === 'hospital' 
+                          ? "bg-red-500/20" 
+                          : "bg-blue-500/20"
+                      )}>
+                        {responder.role === 'hospital' ? (
+                          <Building2 className="w-5 h-5 text-red-500" />
+                        ) : (
+                          <Shield className="w-5 h-5 text-blue-500" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{responder.name}</p>
+                          <Badge variant="outline" className={cn(
+                            "text-xs",
+                            responder.role === 'hospital' 
+                              ? "border-red-500/50 text-red-500 bg-red-500/10" 
+                              : "border-blue-500/50 text-blue-500 bg-blue-500/10"
+                          )}>
+                            {responder.role === 'hospital' ? 'Hospital' : 'Police'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          +91 {responder.phone} • Responded at {new Date(responder.respondedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1" asChild>
+                      <a href={`tel:+91${responder.phone}`}>
+                        <Phone className="w-3 h-3" /> Call
+                      </a>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Responders Yet */}
+          {(!alert.respondedBy || alert.respondedBy.length === 0) && alert.status !== 'resolved' && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-yellow-500" />
+                <div>
+                  <p className="font-medium text-yellow-600">No responders yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Waiting for police or hospital to respond
+                    {alert.currentSearchRadius && (
+                      <span className="ml-1">
+                        • Search radius: {(alert.currentSearchRadius / 1000).toFixed(0)}km
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Alert Timeline */}
           <div className="bg-muted/30 rounded-xl p-4">
             <h3 className="font-semibold text-foreground mb-3 text-sm uppercase tracking-wider">
@@ -484,10 +569,11 @@ interface AlertsPageProps {
 }
 
 const AlertsPage = ({ portalType }: AlertsPageProps) => {
-  const { userRole } = useAuth();
+  const { userRole, user } = useAuth();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [respondingToId, setRespondingToId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -499,6 +585,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
     alerts: { total: number; pending: number; resolved: number };
     sos: { total: number; pending: number; resolved: number };
   } | null>(null);
+
+  const isResponder = portalType === 'police' || portalType === 'hospital';
 
   const fetchAlerts = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
@@ -527,6 +615,30 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
   const handleViewAlert = (alert: Alert) => {
     setSelectedAlert(alert);
     setIsModalOpen(true);
+  };
+
+  const handleRespondToAlert = async (alert: Alert) => {
+    if (!alert.source || alert.source !== 'sos') {
+      toast.error("Can only respond to SOS alerts");
+      return;
+    }
+
+    setRespondingToId(alert._id);
+    try {
+      await sosAPI.respond(alert._id);
+      toast.success("Successfully responded to alert! The user has been notified.");
+      fetchAlerts(true);
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Failed to respond to alert";
+      toast.error(message);
+    } finally {
+      setRespondingToId(null);
+    }
+  };
+
+  const hasUserResponded = (alert: Alert): boolean => {
+    if (!user?.id || !alert.respondedBy) return false;
+    return alert.respondedBy.some(r => r.responderId === user.id);
   };
 
   const filteredAlerts = alerts.filter(alert => {
@@ -704,13 +816,56 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {/* Show responder badges */}
+                  {alert.respondedBy && alert.respondedBy.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {alert.respondedBy.some(r => r.role === 'hospital') && (
+                        <Badge variant="outline" className="text-xs bg-red-500/10 text-red-500 border-red-500/30 gap-1">
+                          <Building2 className="w-3 h-3" />
+                          Hospital
+                        </Badge>
+                      )}
+                      {alert.respondedBy.some(r => r.role === 'police') && (
+                        <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/30 gap-1">
+                          <Shield className="w-3 h-3" />
+                          Police
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                   <Badge className={cn(
                     alert.status === 'resolved' 
                       ? "bg-green-500/20 text-green-500" 
-                      : "bg-red-500/20 text-red-500"
+                      : alert.status === 'responding'
+                        ? "bg-blue-500/20 text-blue-500"
+                        : "bg-red-500/20 text-red-500"
                   )}>
                     {alert.status || 'pending'}
                   </Badge>
+                  {/* Respond button for police/hospital on SOS alerts */}
+                  {isResponder && alert.source === 'sos' && alert.status !== 'resolved' && (
+                    <Button
+                      variant={hasUserResponded(alert) ? "secondary" : "default"}
+                      size="sm"
+                      onClick={() => handleRespondToAlert(alert)}
+                      disabled={respondingToId === alert._id || hasUserResponded(alert)}
+                      className={cn(
+                        "gap-1",
+                        hasUserResponded(alert) 
+                          ? "bg-green-500/20 text-green-600 hover:bg-green-500/30" 
+                          : "bg-green-600 hover:bg-green-700 text-white"
+                      )}
+                    >
+                      {respondingToId === alert._id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : hasUserResponded(alert) ? (
+                        <BadgeCheck className="w-4 h-4" />
+                      ) : (
+                        <HandHelping className="w-4 h-4" />
+                      )}
+                      {hasUserResponded(alert) ? 'Responded' : 'Respond'}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
