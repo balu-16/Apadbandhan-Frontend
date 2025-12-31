@@ -167,9 +167,10 @@ const BecomePartner = () => {
       return;
     }
 
-    // For hospitals, validate coordinates
-    if (formData.partnerType === 'hospital' && (!formData.latitude || !formData.longitude)) {
-      toast.error("Please provide the hospital's exact coordinates (latitude and longitude)");
+    // For hospitals and police, validate coordinates
+    if ((formData.partnerType === 'hospital' || formData.partnerType === 'police') && (!formData.latitude || !formData.longitude)) {
+      const locationName = formData.partnerType === 'hospital' ? "hospital" : "police station";
+      toast.error(`Please provide the ${locationName}'s exact coordinates (latitude and longitude)`);
       return;
     }
 
@@ -557,16 +558,18 @@ const BecomePartner = () => {
         </div>
 
         {/* Hospital-specific: Exact Coordinates */}
-        {formData.partnerType === "hospital" && (
+        {(formData.partnerType === "hospital" || formData.partnerType === "police") && (
           <>
             <div className="md:col-span-2">
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-4">
+              <div className={`p-4 ${formData.partnerType === "hospital" ? "bg-red-500/10 border-red-500/20" : "bg-blue-500/10 border-blue-500/20"} border rounded-xl mb-4`}>
                 <div className="flex items-start gap-3">
-                  <LocateFixed className="w-5 h-5 text-red-500 mt-0.5" />
+                  <LocateFixed className={`w-5 h-5 ${formData.partnerType === "hospital" ? "text-red-500" : "text-blue-500"} mt-0.5`} />
                   <div>
-                    <p className="font-medium text-foreground">Hospital Location Coordinates Required</p>
+                    <p className="font-medium text-foreground">
+                      {formData.partnerType === "hospital" ? "Hospital" : "Police Station"} Location Coordinates Required
+                    </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Please provide exact GPS coordinates of your hospital. This is essential for 
+                      Please provide exact GPS coordinates of your {formData.partnerType === "hospital" ? "hospital" : "police station"}. This is essential for 
                       emergency alert routing. You can find coordinates using Google Maps (right-click on location).
                     </p>
                   </div>
