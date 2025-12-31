@@ -27,8 +27,22 @@ import {
   Loader2,
   Mail,
   Phone,
-  Calendar
+  Calendar,
+  Heart,
+  MapPin,
+  Droplet,
+  UserPlus,
+  X
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,6 +87,10 @@ const UsersManagement = () => {
     fullName: "",
     email: "",
     phone: "",
+    bloodGroup: "",
+    address: "",
+    medicalConditions: "",
+    emergencyContacts: [{ name: "", phone: "", relation: "" }],
   });
 
   const { toast } = useToast();
@@ -103,24 +121,41 @@ const UsersManagement = () => {
     if (!newUser.fullName || !newUser.email || !newUser.phone) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
+    // Filter out empty emergency contacts
+    const validEmergencyContacts = newUser.emergencyContacts.filter(
+      ec => ec.name && ec.phone
+    );
+
     setIsSubmitting(true);
     try {
       await adminAPI.createUser({
-        ...newUser,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        phone: newUser.phone,
         role: 'user',
+        bloodGroup: newUser.bloodGroup || undefined,
+        address: newUser.address || undefined,
+        medicalConditions: newUser.medicalConditions 
+          ? newUser.medicalConditions.split(',').map(c => c.trim()).filter(Boolean) 
+          : undefined,
+        emergencyContacts: validEmergencyContacts.length > 0 ? validEmergencyContacts : undefined,
       });
       toast({
         title: "Success",
         description: "User created successfully",
       });
       setIsAddDialogOpen(false);
-      setNewUser({ fullName: "", email: "", phone: "" });
+      setNewUser({ 
+        fullName: "", email: "", phone: "", 
+        bloodGroup: "", address: "", medicalConditions: "",
+        emergencyContacts: [{ name: "", phone: "", relation: "" }]
+      });
       fetchUsers();
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
@@ -132,6 +167,26 @@ const UsersManagement = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const addEmergencyContact = () => {
+    setNewUser({
+      ...newUser,
+      emergencyContacts: [...newUser.emergencyContacts, { name: "", phone: "", relation: "" }]
+    });
+  };
+
+  const removeEmergencyContact = (index: number) => {
+    setNewUser({
+      ...newUser,
+      emergencyContacts: newUser.emergencyContacts.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateEmergencyContact = (index: number, field: string, value: string) => {
+    const updated = [...newUser.emergencyContacts];
+    updated[index] = { ...updated[index], [field]: value };
+    setNewUser({ ...newUser, emergencyContacts: updated });
   };
 
   const handleDeleteUser = async () => {
@@ -202,7 +257,7 @@ const UsersManagement = () => {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New User</DialogTitle>
               <DialogDescription>
@@ -210,30 +265,142 @@ const UsersManagement = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div>
-                <label className="text-sm font-medium">Full Name</label>
-                <Input
-                  placeholder="Enter full name"
-                  value={newUser.fullName}
-                  onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-                />
+              {/* Basic Info Section */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name *</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="Enter full name"
+                      value={newUser.fullName}
+                      onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      placeholder="10-digit phone number"
+                      value={newUser.phone}
+                      onChange={(e) => setNewUser({ ...newUser, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> Address
+                  </Label>
+                  <Textarea
+                    id="address"
+                    placeholder="Enter home address"
+                    value={newUser.address}
+                    onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
+                    rows={2}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium">Email</label>
-                <Input
-                  type="email"
-                  placeholder="Enter email address"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                />
+
+              {/* Medical Info Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Heart className="h-4 w-4" /> Medical Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bloodGroup" className="flex items-center gap-1">
+                      <Droplet className="h-3 w-3" /> Blood Group
+                    </Label>
+                    <Select
+                      value={newUser.bloodGroup}
+                      onValueChange={(value) => setNewUser({ ...newUser, bloodGroup: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select blood group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A+">A+</SelectItem>
+                        <SelectItem value="A-">A-</SelectItem>
+                        <SelectItem value="B+">B+</SelectItem>
+                        <SelectItem value="B-">B-</SelectItem>
+                        <SelectItem value="AB+">AB+</SelectItem>
+                        <SelectItem value="AB-">AB-</SelectItem>
+                        <SelectItem value="O+">O+</SelectItem>
+                        <SelectItem value="O-">O-</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="medicalConditions">Medical Conditions</Label>
+                    <Input
+                      id="medicalConditions"
+                      placeholder="e.g., Diabetes, Asthma (comma separated)"
+                      value={newUser.medicalConditions}
+                      onChange={(e) => setNewUser({ ...newUser, medicalConditions: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium">Phone Number</label>
-                <Input
-                  placeholder="Enter 10-digit phone number"
-                  value={newUser.phone}
-                  onChange={(e) => setNewUser({ ...newUser, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
-                />
+
+              {/* Emergency Contacts Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" /> Emergency Contacts
+                  </h3>
+                  <Button type="button" variant="outline" size="sm" onClick={addEmergencyContact}>
+                    <Plus className="h-3 w-3 mr-1" /> Add Contact
+                  </Button>
+                </div>
+                {newUser.emergencyContacts.map((contact, index) => (
+                  <div key={index} className="grid grid-cols-4 gap-2 items-end p-3 bg-muted/30 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Name</Label>
+                      <Input
+                        placeholder="Contact name"
+                        value={contact.name}
+                        onChange={(e) => updateEmergencyContact(index, 'name', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Phone</Label>
+                      <Input
+                        placeholder="Phone number"
+                        value={contact.phone}
+                        onChange={(e) => updateEmergencyContact(index, 'phone', e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Relation</Label>
+                      <Input
+                        placeholder="e.g., Father"
+                        value={contact.relation}
+                        onChange={(e) => updateEmergencyContact(index, 'relation', e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive"
+                      onClick={() => removeEmergencyContact(index)}
+                      disabled={newUser.emergencyContacts.length === 1}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
             <DialogFooter>

@@ -73,6 +73,7 @@ const AdminsManagement = () => {
     fullName: "",
     email: "",
     phone: "",
+    department: "",
   });
 
   const { toast } = useToast();
@@ -109,13 +110,17 @@ const AdminsManagement = () => {
 
     setIsSubmitting(true);
     try {
-      await adminAPI.createAdmin(newAdmin);
+      await adminAPI.createAdmin({
+        fullName: newAdmin.fullName,
+        email: newAdmin.email,
+        phone: newAdmin.phone,
+      });
       toast({
         title: "Success",
         description: "Admin created successfully",
       });
       setIsAddDialogOpen(false);
-      setNewAdmin({ fullName: "", email: "", phone: "" });
+      setNewAdmin({ fullName: "", email: "", phone: "", department: "" });
       fetchAdmins();
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;

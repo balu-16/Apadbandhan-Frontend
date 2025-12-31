@@ -18,7 +18,9 @@ import {
   MapPin,
   User,
   FileText,
-  Loader2
+  Loader2,
+  Navigation,
+  LocateFixed
 } from "lucide-react";
 import { toast } from "sonner";
 import { partnersAPI } from "@/services/api";
@@ -48,6 +50,8 @@ interface PartnerFormData {
   city: string;
   state: string;
   pincode: string;
+  latitude: string;
+  longitude: string;
   description: string;
   // Hospital specific
   hospitalType?: string;
@@ -74,6 +78,8 @@ const initialFormData: PartnerFormData = {
   city: "",
   state: "",
   pincode: "",
+  latitude: "",
+  longitude: "",
   description: "",
   hospitalType: "",
   numberOfBeds: "",
@@ -161,6 +167,12 @@ const BecomePartner = () => {
       return;
     }
 
+    // For hospitals, validate coordinates
+    if (formData.partnerType === 'hospital' && (!formData.latitude || !formData.longitude)) {
+      toast.error("Please provide the hospital's exact coordinates (latitude and longitude)");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -193,6 +205,8 @@ const BecomePartner = () => {
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
+        latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
+        longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
         additionalInfo: formData.description || undefined,
       });
       
@@ -541,6 +555,60 @@ const BecomePartner = () => {
             required
           />
         </div>
+
+        {/* Hospital-specific: Exact Coordinates */}
+        {formData.partnerType === "hospital" && (
+          <>
+            <div className="md:col-span-2">
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-4">
+                <div className="flex items-start gap-3">
+                  <LocateFixed className="w-5 h-5 text-red-500 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Hospital Location Coordinates Required</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Please provide exact GPS coordinates of your hospital. This is essential for 
+                      emergency alert routing. You can find coordinates using Google Maps (right-click on location).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="latitude" className="flex items-center gap-2">
+                <Navigation className="w-4 h-4" />
+                Latitude *
+              </Label>
+              <Input
+                id="latitude"
+                name="latitude"
+                type="number"
+                step="any"
+                value={formData.latitude}
+                onChange={handleInputChange}
+                placeholder="e.g., 28.6139"
+                className="mt-2"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="longitude" className="flex items-center gap-2">
+                <Navigation className="w-4 h-4" />
+                Longitude *
+              </Label>
+              <Input
+                id="longitude"
+                name="longitude"
+                type="number"
+                step="any"
+                value={formData.longitude}
+                onChange={handleInputChange}
+                placeholder="e.g., 77.2090"
+                className="mt-2"
+                required
+              />
+            </div>
+          </>
+        )}
 
         <div className="md:col-span-2">
           <Label htmlFor="description">Why do you want to partner with us?</Label>

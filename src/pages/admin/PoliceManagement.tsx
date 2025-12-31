@@ -27,8 +27,13 @@ import {
   Loader2,
   Mail,
   Phone,
-  Calendar
+  Calendar,
+  MapPin,
+  BadgeCheck,
+  Building
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,6 +71,10 @@ const PoliceManagement = () => {
     fullName: "",
     email: "",
     phone: "",
+    stationName: "",
+    badgeNumber: "",
+    jurisdiction: "",
+    address: "",
   });
 
   const { toast } = useToast();
@@ -91,10 +100,10 @@ const PoliceManagement = () => {
   }, [fetchPoliceUsers]);
 
   const handleAddPolice = async () => {
-    if (!newPolice.fullName || !newPolice.email || !newPolice.phone) {
+    if (!newPolice.fullName || !newPolice.email || !newPolice.phone || !newPolice.stationName) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
@@ -102,13 +111,25 @@ const PoliceManagement = () => {
 
     setIsSubmitting(true);
     try {
-      await adminAPI.createPoliceUser(newPolice);
+      await adminAPI.createPoliceUser({
+        fullName: newPolice.fullName,
+        email: newPolice.email,
+        phone: newPolice.phone,
+        stationName: newPolice.stationName,
+        badgeNumber: newPolice.badgeNumber || undefined,
+        jurisdiction: newPolice.jurisdiction || undefined,
+        address: newPolice.address || undefined,
+      });
       toast({
         title: "Success",
         description: "Police account created successfully",
       });
       setIsAddDialogOpen(false);
-      setNewPolice({ fullName: "", email: "", phone: "" });
+      setNewPolice({ 
+        fullName: "", email: "", phone: "", 
+        stationName: "", badgeNumber: "", 
+        jurisdiction: "", address: "" 
+      });
       fetchPoliceUsers();
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
@@ -190,7 +211,7 @@ const PoliceManagement = () => {
               Add Police
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Police Account</DialogTitle>
               <DialogDescription>
@@ -198,30 +219,89 @@ const PoliceManagement = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name</label>
-                <Input
-                  placeholder="Enter full name"
-                  value={newPolice.fullName}
-                  onChange={(e) => setNewPolice({ ...newPolice, fullName: e.target.value })}
-                />
+              {/* Contact Info Section */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Contact Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Officer Name *</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="Enter officer name"
+                      value={newPolice.fullName}
+                      onChange={(e) => setNewPolice({ ...newPolice, fullName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      placeholder="10-digit phone number"
+                      value={newPolice.phone}
+                      onChange={(e) => setNewPolice({ ...newPolice, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newPolice.email}
+                    onChange={(e) => setNewPolice({ ...newPolice, email: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input
-                  type="email"
-                  placeholder="Enter email address"
-                  value={newPolice.email}
-                  onChange={(e) => setNewPolice({ ...newPolice, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Phone Number</label>
-                <Input
-                  placeholder="Enter 10-digit phone number"
-                  value={newPolice.phone}
-                  onChange={(e) => setNewPolice({ ...newPolice, phone: e.target.value })}
-                />
+
+              {/* Police Station Info Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Building className="h-4 w-4" /> Station Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stationName">Police Station Name *</Label>
+                    <Input
+                      id="stationName"
+                      placeholder="Enter station name"
+                      value={newPolice.stationName}
+                      onChange={(e) => setNewPolice({ ...newPolice, stationName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="badgeNumber" className="flex items-center gap-1">
+                      <BadgeCheck className="h-3 w-3" /> Badge Number
+                    </Label>
+                    <Input
+                      id="badgeNumber"
+                      placeholder="Enter badge/ID number"
+                      value={newPolice.badgeNumber}
+                      onChange={(e) => setNewPolice({ ...newPolice, badgeNumber: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="jurisdiction">Jurisdiction Area</Label>
+                  <Input
+                    id="jurisdiction"
+                    placeholder="e.g., Central District, North Zone"
+                    value={newPolice.jurisdiction}
+                    onChange={(e) => setNewPolice({ ...newPolice, jurisdiction: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> Station Address
+                  </Label>
+                  <Textarea
+                    id="address"
+                    placeholder="Enter complete station address"
+                    value={newPolice.address}
+                    onChange={(e) => setNewPolice({ ...newPolice, address: e.target.value })}
+                    rows={2}
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -229,7 +309,8 @@ const PoliceManagement = () => {
                 Cancel
               </Button>
               <Button onClick={handleAddPolice} disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Account"}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Create Police Account
               </Button>
             </DialogFooter>
           </DialogContent>

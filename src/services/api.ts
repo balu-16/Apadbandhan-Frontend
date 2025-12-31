@@ -179,8 +179,16 @@ export const adminAPI = {
   // User management (Admin/SuperAdmin)
   getAllUsers: (role?: string) => api.get('/admin/users', { params: { role } }),
   getUserById: (id: string) => api.get(`/admin/users/${id}`),
-  createUser: (data: { fullName: string; email: string; phone: string; role?: string }) =>
-    api.post('/admin/users', data),
+  createUser: (data: { 
+    fullName: string; 
+    email: string; 
+    phone: string; 
+    role?: string;
+    bloodGroup?: string;
+    address?: string;
+    medicalConditions?: string[];
+    emergencyContacts?: { name: string; phone: string; relation: string }[];
+  }) => api.post('/admin/users', data),
   updateUser: (id: string, data: Partial<UserProfile>) => api.patch(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
 
@@ -192,14 +200,29 @@ export const adminAPI = {
 
   // Police user management (SuperAdmin only)
   getAllPoliceUsers: () => api.get('/admin/police-users'),
-  createPoliceUser: (data: { fullName: string; email: string; phone: string }) =>
-    api.post('/admin/police-users', data),
+  createPoliceUser: (data: { 
+    fullName: string; 
+    email: string; 
+    phone: string;
+    stationName?: string;
+    badgeNumber?: string;
+    jurisdiction?: string;
+    address?: string;
+  }) => api.post('/admin/police-users', data),
   deletePoliceUser: (id: string) => api.delete(`/admin/police-users/${id}`),
 
   // Hospital user management (SuperAdmin only)
   getAllHospitalUsers: () => api.get('/admin/hospital-users'),
-  createHospitalUser: (data: { fullName: string; email: string; phone: string }) =>
-    api.post('/admin/hospital-users', data),
+  createHospitalUser: (data: { 
+    fullName: string; 
+    email: string; 
+    phone: string;
+    hospitalPreference?: string;
+    specialization?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => api.post('/admin/hospital-users', data),
   deleteHospitalUser: (id: string) => api.delete(`/admin/hospital-users/${id}`),
 
   // Device management (Admin/SuperAdmin)
@@ -392,6 +415,8 @@ export const partnersAPI = {
     city: string;
     state: string;
     pincode: string;
+    latitude?: number;
+    longitude?: number;
     additionalInfo?: string;
   }) => api.post('/partners/request', data),
 

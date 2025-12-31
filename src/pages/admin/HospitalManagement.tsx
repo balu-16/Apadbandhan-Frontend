@@ -27,8 +27,14 @@ import {
   Loader2,
   Mail,
   Phone,
-  Calendar
+  Calendar,
+  MapPin,
+  Navigation,
+  Building2,
+  Stethoscope
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,6 +72,11 @@ const HospitalManagement = () => {
     fullName: "",
     email: "",
     phone: "",
+    hospitalPreference: "",
+    specialization: "",
+    address: "",
+    latitude: "",
+    longitude: "",
   });
 
   const { toast } = useToast();
@@ -91,10 +102,19 @@ const HospitalManagement = () => {
   }, [fetchHospitalUsers]);
 
   const handleAddHospital = async () => {
-    if (!newHospital.fullName || !newHospital.email || !newHospital.phone) {
+    if (!newHospital.fullName || !newHospital.email || !newHospital.phone || !newHospital.hospitalPreference) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newHospital.latitude || !newHospital.longitude) {
+      toast({
+        title: "Error",
+        description: "Hospital location coordinates are required for emergency alerts",
         variant: "destructive",
       });
       return;
@@ -102,13 +122,26 @@ const HospitalManagement = () => {
 
     setIsSubmitting(true);
     try {
-      await adminAPI.createHospitalUser(newHospital);
+      await adminAPI.createHospitalUser({
+        fullName: newHospital.fullName,
+        email: newHospital.email,
+        phone: newHospital.phone,
+        hospitalPreference: newHospital.hospitalPreference,
+        specialization: newHospital.specialization || undefined,
+        address: newHospital.address || undefined,
+        latitude: parseFloat(newHospital.latitude),
+        longitude: parseFloat(newHospital.longitude),
+      });
       toast({
         title: "Success",
         description: "Hospital account created successfully",
       });
       setIsAddDialogOpen(false);
-      setNewHospital({ fullName: "", email: "", phone: "" });
+      setNewHospital({ 
+        fullName: "", email: "", phone: "", 
+        hospitalPreference: "", specialization: "", 
+        address: "", latitude: "", longitude: "" 
+      });
       fetchHospitalUsers();
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
@@ -190,7 +223,7 @@ const HospitalManagement = () => {
               Add Hospital
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Hospital Account</DialogTitle>
               <DialogDescription>
@@ -198,30 +231,117 @@ const HospitalManagement = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Hospital/Staff Name</label>
-                <Input
-                  placeholder="Enter hospital or staff name"
-                  value={newHospital.fullName}
-                  onChange={(e) => setNewHospital({ ...newHospital, fullName: e.target.value })}
-                />
+              {/* Basic Info Section */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Contact Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Contact Person Name *</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="Enter contact person name"
+                      value={newHospital.fullName}
+                      onChange={(e) => setNewHospital({ ...newHospital, fullName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      placeholder="10-digit phone number"
+                      value={newHospital.phone}
+                      onChange={(e) => setNewHospital({ ...newHospital, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newHospital.email}
+                    onChange={(e) => setNewHospital({ ...newHospital, email: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input
-                  type="email"
-                  placeholder="Enter email address"
-                  value={newHospital.email}
-                  onChange={(e) => setNewHospital({ ...newHospital, email: e.target.value })}
-                />
+
+              {/* Hospital Info Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Building2 className="h-4 w-4" /> Hospital Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="hospitalPreference">Hospital Name *</Label>
+                    <Input
+                      id="hospitalPreference"
+                      placeholder="Enter hospital name"
+                      value={newHospital.hospitalPreference}
+                      onChange={(e) => setNewHospital({ ...newHospital, hospitalPreference: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="specialization">Specialization</Label>
+                    <Input
+                      id="specialization"
+                      placeholder="e.g., Emergency, Trauma, Multi-specialty"
+                      value={newHospital.specialization}
+                      onChange={(e) => setNewHospital({ ...newHospital, specialization: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Hospital Address</Label>
+                  <Textarea
+                    id="address"
+                    placeholder="Enter complete hospital address"
+                    value={newHospital.address}
+                    onChange={(e) => setNewHospital({ ...newHospital, address: e.target.value })}
+                    rows={2}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Phone Number</label>
-                <Input
-                  placeholder="Enter 10-digit phone number"
-                  value={newHospital.phone}
-                  onChange={(e) => setNewHospital({ ...newHospital, phone: e.target.value })}
-                />
+
+              {/* Location Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> Location Coordinates
+                </h3>
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Important:</strong> Exact coordinates are required for emergency alert routing. 
+                    You can find coordinates using Google Maps (right-click on location).
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="latitude" className="flex items-center gap-1">
+                      <Navigation className="h-3 w-3" /> Latitude *
+                    </Label>
+                    <Input
+                      id="latitude"
+                      type="number"
+                      step="any"
+                      placeholder="e.g., 28.6139"
+                      value={newHospital.latitude}
+                      onChange={(e) => setNewHospital({ ...newHospital, latitude: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="longitude" className="flex items-center gap-1">
+                      <Navigation className="h-3 w-3" /> Longitude *
+                    </Label>
+                    <Input
+                      id="longitude"
+                      type="number"
+                      step="any"
+                      placeholder="e.g., 77.2090"
+                      value={newHospital.longitude}
+                      onChange={(e) => setNewHospital({ ...newHospital, longitude: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <DialogFooter>
@@ -229,7 +349,8 @@ const HospitalManagement = () => {
                 Cancel
               </Button>
               <Button onClick={handleAddHospital} disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Account"}
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Create Hospital Account
               </Button>
             </DialogFooter>
           </DialogContent>
