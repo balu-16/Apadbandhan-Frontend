@@ -55,6 +55,8 @@ interface PartnerRequest {
   city: string;
   state: string;
   pincode: string;
+  latitude?: number;
+  longitude?: number;
   additionalInfo?: string;
   status: "pending" | "approved" | "rejected";
   reviewedBy?: string;
@@ -443,6 +445,46 @@ const PartnerRequests = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* GPS Coordinates */}
+                {(selectedRequest.latitude || selectedRequest.longitude) && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                      GPS Coordinates
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                          <MapPin className="w-4 h-4 text-green-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Latitude</p>
+                          <p className="font-medium">{selectedRequest.latitude || 'Not provided'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                          <MapPin className="w-4 h-4 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Longitude</p>
+                          <p className="font-medium">{selectedRequest.longitude || 'Not provided'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    {selectedRequest.latitude && selectedRequest.longitude && (
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedRequest.latitude},${selectedRequest.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        View on Google Maps
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 {/* Additional Details */}
                 {(selectedRequest.specialization || selectedRequest.jurisdiction || selectedRequest.coverageArea) && (
