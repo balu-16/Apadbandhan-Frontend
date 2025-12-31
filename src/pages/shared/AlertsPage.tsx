@@ -30,7 +30,8 @@ import {
   Home,
   HandHelping,
   Building2,
-  BadgeCheck
+  BadgeCheck,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -459,12 +470,143 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
             </div>
           )}
 
-          {/* Responders Section */}
-          {alert.respondedBy && alert.respondedBy.length > 0 && (
+          {/* Response Status Section - Shows both police and hospital status */}
+          {alert.source === 'sos' && (
             <div className="bg-muted/30 rounded-xl p-4">
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
-                <HandHelping className="w-4 h-4 text-green-500" />
-                Responders ({alert.respondedBy.length})
+                <HandHelping className="w-4 h-4 text-primary" />
+                Response Status
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Police Response Status */}
+                {(() => {
+                  const policeResponder = alert.respondedBy?.find(r => r.role === 'police');
+                  return (
+                    <div className={cn(
+                      "rounded-xl p-4 border-2",
+                      policeResponder 
+                        ? "bg-green-500/10 border-green-500/30" 
+                        : "bg-yellow-500/10 border-yellow-500/30"
+                    )}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={cn(
+                          "w-12 h-12 rounded-xl flex items-center justify-center",
+                          policeResponder ? "bg-green-500/20" : "bg-blue-500/20"
+                        )}>
+                          <Shield className={cn(
+                            "w-6 h-6",
+                            policeResponder ? "text-green-500" : "text-blue-500"
+                          )} />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-blue-600">Police</p>
+                          <Badge className={cn(
+                            "text-xs",
+                            policeResponder 
+                              ? "bg-green-500/20 text-green-600" 
+                              : "bg-yellow-500/20 text-yellow-600"
+                          )}>
+                            {policeResponder ? 'Responded' : 'Waiting'}
+                          </Badge>
+                        </div>
+                      </div>
+                      {policeResponder ? (
+                        <div className="space-y-2">
+                          <p className="font-medium text-sm">{policeResponder.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            +91 {policeResponder.phone}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Responded: {new Date(policeResponder.respondedAt).toLocaleString()}
+                          </p>
+                          <Button size="sm" variant="outline" className="w-full gap-1 mt-2" asChild>
+                            <a href={`tel:+91${policeResponder.phone}`}>
+                              <Phone className="w-3 h-3" /> Call Police
+                            </a>
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Waiting for police to respond...
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Hospital Response Status */}
+                {(() => {
+                  const hospitalResponder = alert.respondedBy?.find(r => r.role === 'hospital');
+                  return (
+                    <div className={cn(
+                      "rounded-xl p-4 border-2",
+                      hospitalResponder 
+                        ? "bg-green-500/10 border-green-500/30" 
+                        : "bg-yellow-500/10 border-yellow-500/30"
+                    )}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={cn(
+                          "w-12 h-12 rounded-xl flex items-center justify-center",
+                          hospitalResponder ? "bg-green-500/20" : "bg-red-500/20"
+                        )}>
+                          <Building2 className={cn(
+                            "w-6 h-6",
+                            hospitalResponder ? "text-green-500" : "text-red-500"
+                          )} />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-red-600">Hospital</p>
+                          <Badge className={cn(
+                            "text-xs",
+                            hospitalResponder 
+                              ? "bg-green-500/20 text-green-600" 
+                              : "bg-yellow-500/20 text-yellow-600"
+                          )}>
+                            {hospitalResponder ? 'Responded' : 'Waiting'}
+                          </Badge>
+                        </div>
+                      </div>
+                      {hospitalResponder ? (
+                        <div className="space-y-2">
+                          <p className="font-medium text-sm">{hospitalResponder.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            +91 {hospitalResponder.phone}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Responded: {new Date(hospitalResponder.respondedAt).toLocaleString()}
+                          </p>
+                          <Button size="sm" variant="outline" className="w-full gap-1 mt-2" asChild>
+                            <a href={`tel:+91${hospitalResponder.phone}`}>
+                              <Phone className="w-3 h-3" /> Call Hospital
+                            </a>
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Waiting for hospital to respond...
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              {/* Search radius info */}
+              {alert.currentSearchRadius && alert.status !== 'resolved' && (
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Navigation className="w-3 h-3" />
+                  Current search radius: {(alert.currentSearchRadius / 1000).toFixed(0)}km
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* All Responders List (if multiple of same type) */}
+          {alert.respondedBy && alert.respondedBy.length > 2 && (
+            <div className="bg-muted/30 rounded-xl p-4">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
+                <Users className="w-4 h-4 text-green-500" />
+                All Responders ({alert.respondedBy.length})
               </h3>
               <div className="space-y-2">
                 {alert.respondedBy.map((responder, idx) => (
@@ -495,7 +637,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          +91 {responder.phone} • Responded at {new Date(responder.respondedAt).toLocaleString()}
+                          +91 {responder.phone} • {new Date(responder.respondedAt).toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -506,26 +648,6 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                     </Button>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* No Responders Yet */}
-          {(!alert.respondedBy || alert.respondedBy.length === 0) && alert.status !== 'resolved' && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6 text-yellow-500" />
-                <div>
-                  <p className="font-medium text-yellow-600">No responders yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Waiting for police or hospital to respond
-                    {alert.currentSearchRadius && (
-                      <span className="ml-1">
-                        • Search radius: {(alert.currentSearchRadius / 1000).toFixed(0)}km
-                      </span>
-                    )}
-                  </p>
-                </div>
               </div>
             </div>
           )}
@@ -574,6 +696,9 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [respondingToId, setRespondingToId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [alertToDelete, setAlertToDelete] = useState<Alert | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -587,6 +712,7 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
   } | null>(null);
 
   const isResponder = portalType === 'police' || portalType === 'hospital';
+  const canDelete = portalType === 'superadmin' || userRole === 'user';
 
   const fetchAlerts = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
@@ -639,6 +765,30 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
   const hasUserResponded = (alert: Alert): boolean => {
     if (!user?.id || !alert.respondedBy) return false;
     return alert.respondedBy.some(r => r.responderId === user.id);
+  };
+
+  const handleDeleteClick = (alert: Alert) => {
+    setAlertToDelete(alert);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!alertToDelete) return;
+    
+    setDeletingId(alertToDelete._id);
+    try {
+      const source = alertToDelete.source || 'alert';
+      await alertsAPI.delete(alertToDelete._id, source);
+      toast.success(`${source === 'sos' ? 'SOS alert' : 'Alert'} deleted successfully`);
+      fetchAlerts(true);
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Failed to delete alert";
+      toast.error(message);
+    } finally {
+      setDeletingId(null);
+      setAlertToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   const filteredAlerts = alerts.filter(alert => {
@@ -875,6 +1025,23 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                     <Eye className="w-4 h-4" />
                     View Details
                   </Button>
+                  {/* Delete button for superadmin and user */}
+                  {canDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteClick(alert)}
+                      disabled={deletingId === alert._id}
+                      className="gap-1 text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30"
+                    >
+                      {deletingId === alert._id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -896,6 +1063,33 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Alert</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this {alertToDelete?.source === 'sos' ? 'SOS alert' : 'alert'}? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAlertToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {deletingId ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -47,7 +47,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { cn } from "@/lib/utils";
-import { deviceLocationsAPI } from "@/services/api";
+import { deviceLocationsAPI, sosAPI } from "@/services/api";
+import { toast } from "sonner";
 
 interface AxiosErrorLike {
   response?: {
@@ -182,6 +183,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   const [locationHistory, setLocationHistory] = useState<LocationHistory[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isTriggingSOS, setIsTriggingSOS] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -618,44 +620,70 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   variant="destructive"
                   size="sm"
                   className="gap-1 bg-red-600 hover:bg-red-700 flex-1 sm:flex-none text-xs sm:text-sm"
+                  disabled={isTriggingSOS}
                   onClick={async () => {
-                    const deviceId = getDeviceId();
-                    if (!deviceId) return;
+                    // Prevent duplicate SOS triggers
+                    if (isTriggingSOS) return;
                     
-                    // Get current location from browser
+                    const deviceId = getDeviceId();
+                    if (!deviceId) {
+                      toast.error("Device ID not found");
+                      return;
+                    }
+                    
+                    // Get coordinates
+                    let lat: number | undefined;
+                    let lng: number | undefined;
+                    
                     if (currentLocation?.latitude && currentLocation?.longitude) {
-                      try {
-                        await deviceLocationsAPI.create({
-                          deviceId,
-                          latitude: currentLocation.latitude,
-                          longitude: currentLocation.longitude,
-                          accuracy: currentLocation.accuracy,
-                          source: 'browser',
-                          isSOS: true,
-                        });
-                        // Refresh to show the new SOS location
-                        fetchLocationHistory(false);
-                      } catch (error) {
-                        console.error('Failed to record SOS location:', error);
-                      }
+                      lat = currentLocation.latitude;
+                      lng = currentLocation.longitude;
                     } else if (lastKnownLocation?.latitude && lastKnownLocation?.longitude) {
-                      try {
-                        await deviceLocationsAPI.create({
-                          deviceId,
-                          latitude: lastKnownLocation.latitude,
-                          longitude: lastKnownLocation.longitude,
-                          source: 'browser',
-                          isSOS: true,
-                        });
-                        fetchLocationHistory(false);
-                      } catch (error) {
-                        console.error('Failed to record SOS location:', error);
-                      }
+                      lat = lastKnownLocation.latitude;
+                      lng = lastKnownLocation.longitude;
+                    } else if (device?.location?.latitude && device?.location?.longitude) {
+                      lat = device.location.latitude;
+                      lng = device.location.longitude;
+                    }
+                    
+                    if (!lat || !lng) {
+                      toast.error("Location not available. Please enable location services.");
+                      return;
+                    }
+                    
+                    setIsTriggingSOS(true);
+                    try {
+                      // Trigger actual SOS alert
+                      await sosAPI.trigger({ lat, lng });
+                      toast.success("SOS alert triggered! Help is on the way.");
+                      
+                      // Also record as SOS location
+                      await deviceLocationsAPI.create({
+                        deviceId,
+                        latitude: lat,
+                        longitude: lng,
+                        accuracy: currentLocation?.accuracy,
+                        source: 'browser',
+                        isSOS: true,
+                      });
+                      
+                      // Refresh to show the new SOS location
+                      fetchLocationHistory(false);
+                    } catch (error: any) {
+                      const message = error.response?.data?.message || "Failed to trigger SOS";
+                      toast.error(message);
+                      console.error('Failed to trigger SOS:', error);
+                    } finally {
+                      setIsTriggingSOS(false);
                     }
                   }}
                 >
-                  <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
-                  SOS
+                  {isTriggingSOS ? (
+                    <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                  ) : (
+                    <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
+                  )}
+                  {isTriggingSOS ? "Triggering..." : "SOS"}
                 </Button>
               </div>
             </div>

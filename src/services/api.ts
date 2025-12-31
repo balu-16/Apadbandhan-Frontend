@@ -139,6 +139,8 @@ export const alertsAPI = {
   create: (data: AlertData) => api.post('/alerts', data),
   updateStatus: (id: string, data: { status: string; notes?: string }) =>
     api.patch(`/alerts/${id}/status`, data),
+  delete: (id: string, source: 'alert' | 'sos' = 'alert') =>
+    api.delete(`/alerts/${id}`, { params: { source } }),
 };
 
 // Device Locations API
