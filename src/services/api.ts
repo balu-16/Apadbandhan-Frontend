@@ -8,10 +8,21 @@ export interface UserProfile {
   phone: string;
   role: 'user' | 'admin' | 'superadmin' | 'police' | 'hospital';
   profilePhoto?: string;
-  hospitalPreference?: string;
+  hospitalPreference?: 'government' | 'private' | 'both';
+  hospitalType?: 'government' | 'private'; // For hospital role users
   accidentAlerts?: boolean;
   smsNotifications?: boolean;
   locationTracking?: boolean;
+  bloodGroup?: string;
+  address?: string;
+  medicalConditions?: string[];
+  emergencyContacts?: Array<{
+    name: string;
+    relation: string;
+    phone: string;
+  }>;
+  onDuty?: boolean; // For police/hospital role users
+  specialization?: string; // For hospital role users
 }
 
 export interface DeviceData {
@@ -127,10 +138,10 @@ export const devicesAPI = {
 
 // Alerts API
 export const alertsAPI = {
-  getAll: (params?: { status?: string; limit?: number; skip?: number }) => 
+  getAll: (params?: { status?: string; limit?: number; skip?: number }) =>
     api.get('/alerts', { params }),
   // Combined alerts and SOS events with optional filter
-  getCombined: (source: 'all' | 'alert' | 'sos' = 'all') => 
+  getCombined: (source: 'all' | 'alert' | 'sos' = 'all') =>
     api.get('/alerts/combined', { params: { source } }),
   getStats: () => api.get('/alerts/stats'),
   getCombinedStats: () => api.get('/alerts/stats/combined'),
@@ -172,7 +183,7 @@ export const deviceLocationsAPI = {
   deleteByDevice: (deviceId: string) => api.delete(`/device-locations/device/${deviceId}`),
 
   // Backfill addresses for locations without address data
-  backfillAddresses: (deviceId: string, limit?: number) => 
+  backfillAddresses: (deviceId: string, limit?: number) =>
     api.post(`/device-locations/device/${deviceId}/backfill-addresses`, null, { params: { limit } }),
 };
 
@@ -181,10 +192,10 @@ export const adminAPI = {
   // User management (Admin/SuperAdmin)
   getAllUsers: (role?: string) => api.get('/admin/users', { params: { role } }),
   getUserById: (id: string) => api.get(`/admin/users/${id}`),
-  createUser: (data: { 
-    fullName: string; 
-    email: string; 
-    phone: string; 
+  createUser: (data: {
+    fullName: string;
+    email: string;
+    phone: string;
     role?: string;
     bloodGroup?: string;
     address?: string;
@@ -202,9 +213,9 @@ export const adminAPI = {
 
   // Police user management (SuperAdmin only)
   getAllPoliceUsers: () => api.get('/admin/police-users'),
-  createPoliceUser: (data: { 
-    fullName: string; 
-    email: string; 
+  createPoliceUser: (data: {
+    fullName: string;
+    email: string;
     phone: string;
     stationName?: string;
     badgeNumber?: string;
@@ -215,9 +226,9 @@ export const adminAPI = {
 
   // Hospital user management (SuperAdmin only)
   getAllHospitalUsers: () => api.get('/admin/hospital-users'),
-  createHospitalUser: (data: { 
-    fullName: string; 
-    email: string; 
+  createHospitalUser: (data: {
+    fullName: string;
+    email: string;
     phone: string;
     hospitalPreference?: string;
     specialization?: string;
@@ -240,13 +251,13 @@ export const adminAPI = {
   getStats: () => api.get('/admin/stats'),
 
   // Login logs
-  getUserLoginLogs: (userId: string, limit?: number) => 
+  getUserLoginLogs: (userId: string, limit?: number) =>
     api.get(`/admin/users/${userId}/login-logs`, { params: { limit } }),
-  getAdminLoginLogs: (userId: string, limit?: number) => 
+  getAdminLoginLogs: (userId: string, limit?: number) =>
     api.get(`/admin/admins/${userId}/login-logs`, { params: { limit } }),
-  getAllUserLoginLogs: (limit?: number) => 
+  getAllUserLoginLogs: (limit?: number) =>
     api.get('/admin/login-logs/users', { params: { limit } }),
-  getAllAdminLoginLogs: (limit?: number) => 
+  getAllAdminLoginLogs: (limit?: number) =>
     api.get('/admin/login-logs/admins', { params: { limit } }),
 
   // QR code lookup
@@ -256,26 +267,26 @@ export const adminAPI = {
 // Police API
 export const policeAPI = {
   // Update profile (onDuty, etc)
-  updateProfile: (data: { isActive?: boolean; onDuty?: boolean; fullName?: string }) => 
+  updateProfile: (data: { isActive?: boolean; onDuty?: boolean; fullName?: string }) =>
     api.patch('/police/profile', data),
 
   // Get all users (read-only)
   getAllUsers: () => api.get('/police/users'),
-  
+
   // Get all alerts
   getAllAlerts: () => api.get('/police/alerts'),
-  
+
   // Get alerts with params
   getAlerts: (params?: { status?: string; limit?: number }) =>
     api.get('/police/alerts', { params }),
-  
+
   // Get alert details with user info
   getAlertDetails: (alertId: string) => api.get(`/police/alerts/${alertId}`),
-  
+
   // Update alert status
   updateAlertStatus: (alertId: string, status: string, notes?: string) =>
     api.patch(`/police/alerts/${alertId}`, { status, notes }),
-  
+
   // Get dashboard stats
   getStats: () => api.get('/police/stats'),
 
@@ -288,7 +299,7 @@ export const policeAPI = {
     speed?: number;
     heading?: number;
   }) => api.post('/police/location', data),
-  
+
   getLocationHistory: () => api.get('/police/location/history'),
   getLastLocation: () => api.get('/police/location/last'),
 };
@@ -296,26 +307,26 @@ export const policeAPI = {
 // Hospital API
 export const hospitalAPI = {
   // Update profile (onDuty, etc)
-  updateProfile: (data: { isActive?: boolean; onDuty?: boolean; fullName?: string }) => 
+  updateProfile: (data: { isActive?: boolean; onDuty?: boolean; fullName?: string }) =>
     api.patch('/hospital/profile', data),
 
   // Get all users (read-only)
   getAllUsers: () => api.get('/hospital/users'),
-  
+
   // Get all alerts
   getAllAlerts: () => api.get('/hospital/alerts'),
-  
+
   // Get alerts with params
   getAlerts: (params?: { status?: string; limit?: number }) =>
     api.get('/hospital/alerts', { params }),
-  
+
   // Get alert details with user info
   getAlertDetails: (alertId: string) => api.get(`/hospital/alerts/${alertId}`),
-  
+
   // Update alert status
   updateAlertStatus: (alertId: string, status: string, notes?: string) =>
     api.patch(`/hospital/alerts/${alertId}`, { status, notes }),
-  
+
   // Get dashboard stats
   getStats: () => api.get('/hospital/stats'),
 
@@ -328,7 +339,7 @@ export const hospitalAPI = {
     speed?: number;
     heading?: number;
   }) => api.post('/hospital/location', data),
-  
+
   getLocationHistory: () => api.get('/hospital/location/history'),
   getLastLocation: () => api.get('/hospital/location/last'),
 };
@@ -411,6 +422,7 @@ export const partnersAPI = {
     phone: string;
     registrationNumber?: string;
     specialization?: string;
+    hospitalType?: string;
     jurisdiction?: string;
     coverageArea?: string;
     address: string;
@@ -442,31 +454,31 @@ export const partnersAPI = {
 // SOS API
 export const sosAPI = {
   // Trigger SOS emergency
-  trigger: (data: { lat: number; lng: number }) => 
+  trigger: (data: { lat: number; lng: number }) =>
     api.post('/sos/trigger', data),
 
   // Get SOS results by ID
-  getResults: (sosId: string) => 
+  getResults: (sosId: string) =>
     api.get(`/sos/results/${sosId}`),
 
   // Resolve SOS event
-  resolve: (sosId: string, notes?: string) => 
+  resolve: (sosId: string, notes?: string) =>
     api.post(`/sos/resolve/${sosId}`, { notes }),
 
   // Get user's SOS history
-  getHistory: () => 
+  getHistory: () =>
     api.get('/sos/history'),
 
   // Get all active SOS events (admin/responder)
-  getActive: () => 
+  getActive: () =>
     api.get('/sos/active'),
 
   // Respond to an SOS event (police/hospital only)
-  respond: (sosId: string) => 
+  respond: (sosId: string) =>
     api.post(`/sos/respond/${sosId}`),
 
   // Get responders info for an SOS event
-  getResponders: (sosId: string) => 
+  getResponders: (sosId: string) =>
     api.get(`/sos/responders/${sosId}`),
 };
 
@@ -483,12 +495,41 @@ export const onDutyAPI = {
   }) => api.post('/on-duty/location', data),
 
   // Toggle on-duty status
-  toggle: (data: { onDuty: boolean; lat?: number; lng?: number }) => 
+  toggle: (data: { onDuty: boolean; lat?: number; lng?: number }) =>
     api.post('/on-duty/toggle', data),
 
   // Get current on-duty status
-  getStatus: () => 
+  getStatus: () =>
     api.get('/on-duty/status'),
+};
+
+// System Config API (superadmin only)
+export interface SystemConfig {
+  id: string;
+  configKey: string;
+  maxPoliceAlertRecipients: number;
+  maxHospitalAlertRecipients: number;
+  defaultSearchRadiusMeters: number;
+  maxSearchRadiusMeters: number;
+  lastUpdatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const systemConfigAPI = {
+  // Get system configuration
+  getConfig: () => api.get<SystemConfig>('/system-config'),
+
+  // Get alert recipient limits
+  getAlertLimits: () => api.get<{ maxPolice: number; maxHospital: number }>('/system-config/alert-limits'),
+
+  // Update system configuration (superadmin only)
+  updateConfig: (data: {
+    maxPoliceAlertRecipients?: number;
+    maxHospitalAlertRecipients?: number;
+    defaultSearchRadiusMeters?: number;
+    maxSearchRadiusMeters?: number;
+  }) => api.patch<SystemConfig>('/system-config', data),
 };
 
 export default api;

@@ -49,6 +49,7 @@ interface PartnerRequest {
   phone: string;
   registrationNumber?: string;
   specialization?: string;
+  hospitalType?: "government" | "private"; // For hospitals only
   jurisdiction?: string;
   coverageArea?: string;
   address: string;
@@ -487,12 +488,22 @@ const PartnerRequests = () => {
                 )}
 
                 {/* Additional Details */}
-                {(selectedRequest.specialization || selectedRequest.jurisdiction || selectedRequest.coverageArea) && (
+                {(selectedRequest.specialization || selectedRequest.jurisdiction || selectedRequest.coverageArea || selectedRequest.hospitalType) && (
                   <div className="space-y-3">
                     <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
                       Additional Details
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
+                      {selectedRequest.hospitalType && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Hospital Type</p>
+                          <p className="font-medium capitalize">
+                            <span className={selectedRequest.hospitalType === 'government' ? 'text-blue-600' : 'text-green-600'}>
+                              {selectedRequest.hospitalType} Hospital
+                            </span>
+                          </p>
+                        </div>
+                      )}
                       {selectedRequest.specialization && (
                         <div>
                           <p className="text-xs text-muted-foreground">Specialization</p>

@@ -38,7 +38,8 @@ import {
   Moon,
   Monitor,
   Palette,
-  LogOut
+  LogOut,
+  Hospital
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -470,6 +471,26 @@ const Settings = () => {
                 <div>
                   <p className="font-semibold text-foreground">Private Hospitals</p>
                   <p className="text-sm text-muted-foreground">Premium healthcare facilities</p>
+                </div>
+              </div>
+            </Label>
+          </div>
+
+          <div className={cn(
+            "flex items-center space-x-4 p-4 rounded-xl border transition-all duration-300 cursor-pointer",
+            hospitalPreference === "both"
+              ? "border-primary bg-primary/10"
+              : "border-border/50 bg-muted/30 hover:bg-muted/50"
+          )}>
+            <RadioGroupItem value="both" id="both" />
+            <Label htmlFor="both" className="flex-1 cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <Hospital className="w-5 h-5 text-purple-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Any Hospital (Both)</p>
+                  <p className="text-sm text-muted-foreground">Government & Private - nearest available</p>
                 </div>
               </div>
             </Label>

@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { systemConfigAPI } from "@/services/api";
 import { 
   User, 
   Phone, 
@@ -32,14 +33,17 @@ import {
   Moon,
   Monitor,
   Palette,
-  LogOut
+  LogOut,
+  Settings,
+  Shield,
+  Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const AdminSettings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, logout } = useAuth();
+  const { user, logout, isSuperAdmin } = useAuth();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -50,6 +54,12 @@ const AdminSettings = () => {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // System Config state (superadmin only)
+  const [maxPoliceAlerts, setMaxPoliceAlerts] = useState<string>('5');
+  const [maxHospitalAlerts, setMaxHospitalAlerts] = useState<string>('5');
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
   
   // User Information
   const [userInfo, setUserInfo] = useState({
@@ -76,6 +86,59 @@ const AdminSettings = () => {
     }
     setIsLoading(false);
   }, [user]);
+
+  // Load system config for superadmin
+  useEffect(() => {
+    if (isSuperAdmin) {
+      loadSystemConfig();
+    } else {
+      setIsLoadingConfig(false);
+    }
+  }, [isSuperAdmin]);
+
+  const loadSystemConfig = async () => {
+    try {
+      setIsLoadingConfig(true);
+      const response = await systemConfigAPI.getConfig();
+      const config = response.data;
+      setMaxPoliceAlerts(String(config.maxPoliceAlertRecipients || 5));
+      setMaxHospitalAlerts(String(config.maxHospitalAlertRecipients || 5));
+    } catch (error) {
+      console.error('Failed to load system config:', error);
+      setMaxPoliceAlerts('5');
+      setMaxHospitalAlerts('5');
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  };
+
+  const handleSaveAlertConfig = async () => {
+    const policeLimit = parseInt(maxPoliceAlerts, 10);
+    const hospitalLimit = parseInt(maxHospitalAlerts, 10);
+
+    if (isNaN(policeLimit) || policeLimit < 1 || policeLimit > 50) {
+      toast({ title: "Invalid Value", description: "Police alert limit must be between 1 and 50", variant: "destructive" });
+      return;
+    }
+    if (isNaN(hospitalLimit) || hospitalLimit < 1 || hospitalLimit > 50) {
+      toast({ title: "Invalid Value", description: "Hospital alert limit must be between 1 and 50", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setIsSavingConfig(true);
+      await systemConfigAPI.updateConfig({
+        maxPoliceAlertRecipients: policeLimit,
+        maxHospitalAlertRecipients: hospitalLimit,
+      });
+      toast({ title: "Success", description: "Alert configuration saved successfully" });
+    } catch (error: unknown) {
+      console.error('Failed to save config:', error);
+      toast({ title: "Error", description: "Failed to save configuration", variant: "destructive" });
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -311,6 +374,84 @@ const AdminSettings = () => {
           </div>
         </div>
       </section>
+
+      {/* System Configuration - Superadmin Only */}
+      {isSuperAdmin && (
+        <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+          <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+            <Settings className="w-5 h-5 text-primary" />
+            Alert Configuration
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Configure the maximum number of responders to alert during SOS events. Only the nearest responders within these limits will receive alerts.
+          </p>
+          
+          {isLoadingConfig ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 bg-muted/30 rounded-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Police Alert Limit</p>
+                      <p className="text-xs text-muted-foreground">Max police to notify per SOS</p>
+                    </div>
+                  </div>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={maxPoliceAlerts}
+                    onChange={(e) => setMaxPoliceAlerts(e.target.value)}
+                    placeholder="5"
+                  />
+                </div>
+                
+                <div className="p-4 bg-muted/30 rounded-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Hospital Alert Limit</p>
+                      <p className="text-xs text-muted-foreground">Max hospitals to notify per SOS</p>
+                    </div>
+                  </div>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={maxHospitalAlerts}
+                    onChange={(e) => setMaxHospitalAlerts(e.target.value)}
+                    placeholder="5"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button 
+                  variant="outline"
+                  onClick={handleSaveAlertConfig}
+                  disabled={isSavingConfig}
+                  className="gap-2"
+                >
+                  {isSavingConfig ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Save className="w-4 h-4" /> Save Alert Config</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Appearance / Theme */}
       <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.2s" }}>

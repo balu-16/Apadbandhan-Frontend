@@ -10,12 +10,14 @@ interface User {
   phone: string;
   role: UserRole;
   profilePhoto?: string;
-  hospitalPreference?: string;
+  hospitalPreference?: 'government' | 'private' | 'both';
+  hospitalType?: 'government' | 'private'; // For hospital role users
   accidentAlerts?: boolean;
   smsNotifications?: boolean;
   locationTracking?: boolean;
   isActive?: boolean;
   onDuty?: boolean;
+  specialization?: string; // For hospital role users
 }
 
 interface AuthContextType {

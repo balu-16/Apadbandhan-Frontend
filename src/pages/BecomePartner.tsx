@@ -200,6 +200,7 @@ const BecomePartner = () => {
         phone: formData.phone,
         registrationNumber: formData.registrationNumber || undefined,
         specialization: specialization || undefined,
+        hospitalType: formData.partnerType === 'hospital' ? formData.hospitalType : undefined,
         jurisdiction: formData.jurisdiction || undefined,
         coverageArea: coverageArea || undefined,
         address: formData.address,
@@ -380,20 +381,23 @@ const BecomePartner = () => {
         {formData.partnerType === "hospital" && (
           <>
             <div>
-              <Label htmlFor="hospitalType">Hospital Type</Label>
+              <Label htmlFor="hospitalType" className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Hospital Type *
+              </Label>
               <select
                 id="hospitalType"
                 name="hospitalType"
                 value={formData.hospitalType}
                 onChange={handleInputChange}
                 className="mt-2 w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                required
               >
                 <option value="">Select type</option>
                 <option value="government">Government Hospital</option>
                 <option value="private">Private Hospital</option>
-                <option value="clinic">Clinic</option>
-                <option value="trauma-center">Trauma Center</option>
               </select>
+              <p className="text-xs text-muted-foreground mt-1">This will be used to match with users' hospital preferences during emergencies</p>
             </div>
             <div>
               <Label htmlFor="numberOfBeds">Number of Beds</Label>
