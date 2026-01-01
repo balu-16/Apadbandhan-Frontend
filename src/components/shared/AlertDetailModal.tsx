@@ -27,6 +27,18 @@ import {
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// Fix for default marker icons
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
 
 interface EmergencyContact {
   name: string;
@@ -266,7 +278,7 @@ const AlertDetailModal = ({
                     <div>
                       <p className="text-xs text-muted-foreground">Medical Conditions</p>
                       <p className="font-medium">
-                        {user.medicalConditions?.length 
+                        {user.medicalConditions?.length
                           ? user.medicalConditions.join(', ')
                           : 'None reported'}
                       </p>
@@ -288,7 +300,7 @@ const AlertDetailModal = ({
                             <p className="font-medium">{contact.name}</p>
                             <p className="text-xs text-muted-foreground">{contact.relation}</p>
                           </div>
-                          <a 
+                          <a
                             href={`tel:${contact.phone}`}
                             className="text-primary hover:underline flex items-center gap-1"
                           >
@@ -317,8 +329,8 @@ const AlertDetailModal = ({
                           </div>
                           <Badge className={cn(
                             "text-xs",
-                            device.status === 'online' 
-                              ? "bg-green-500/20 text-green-500" 
+                            device.status === 'online'
+                              ? "bg-green-500/20 text-green-500"
                               : "bg-gray-500/20 text-gray-500"
                           )}>
                             {device.status}
@@ -376,8 +388,8 @@ const AlertDetailModal = ({
                   </div>
                 </div>
 
-                <Button 
-                  onClick={openInMaps} 
+                <Button
+                  onClick={openInMaps}
                   className="w-full"
                   variant="outline"
                 >
@@ -385,13 +397,34 @@ const AlertDetailModal = ({
                   Open in Google Maps
                 </Button>
 
-                {/* Map Preview Placeholder */}
-                <div className="bg-muted/30 rounded-xl p-4 h-48 flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <MapPin className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Map preview</p>
-                    <p className="text-xs">Click "Open in Google Maps" for navigation</p>
-                  </div>
+                {/* Map Preview */}
+                <div className="rounded-xl overflow-hidden border border-border h-48">
+                  <MapContainer
+                    center={[location.latitude, location.longitude]}
+                    zoom={15}
+                    style={{ height: "100%", width: "100%" }}
+                    scrollWheelZoom={true}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <CircleMarker
+                      center={[location.latitude, location.longitude]}
+                      radius={12}
+                      fillColor="#ef4444"
+                      fillOpacity={0.9}
+                      color="white"
+                      weight={3}
+                    >
+                      <Popup>
+                        <div className="text-center">
+                          <p className="font-semibold text-red-600">🚨 Alert Location</p>
+                          <p className="text-xs mt-1">{user?.fullName || 'User in Distress'}</p>
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  </MapContainer>
                 </div>
               </>
             ) : (
@@ -416,7 +449,7 @@ const AlertDetailModal = ({
               <FileText className="w-4 h-4" />
               Response Actions
             </h3>
-            
+
             <Textarea
               placeholder="Add notes about your response..."
               value={notes}
@@ -439,7 +472,7 @@ const AlertDetailModal = ({
                   {userRole === 'hospital' ? 'Accept & Respond' : 'Accept & Dispatch'}
                 </Button>
               ) : null}
-              
+
               <Button
                 onClick={() => handleStatusUpdate('resolved')}
                 disabled={isUpdating}

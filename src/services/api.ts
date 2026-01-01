@@ -29,7 +29,7 @@ export interface DeviceData {
   name?: string;
   code?: string;
   type?: string;
-  status?: 'online' | 'offline';
+  status?: 'online' | 'offline' | 'maintenance';
   emergencyContacts?: Array<{
     name: string;
     relation: string;
@@ -223,6 +223,14 @@ export const adminAPI = {
     address?: string;
   }) => api.post('/admin/police-users', data),
   deletePoliceUser: (id: string) => api.delete(`/admin/police-users/${id}`),
+  updatePoliceUser: (id: string, data: {
+    fullName?: string;
+    email?: string;
+    stationName?: string;
+    badgeNumber?: string;
+    jurisdiction?: string;
+    address?: string;
+  }) => api.patch(`/admin/police-users/${id}`, data),
 
   // Hospital user management (SuperAdmin only)
   getAllHospitalUsers: () => api.get('/admin/hospital-users'),
@@ -237,6 +245,15 @@ export const adminAPI = {
     longitude?: number;
   }) => api.post('/admin/hospital-users', data),
   deleteHospitalUser: (id: string) => api.delete(`/admin/hospital-users/${id}`),
+  updateHospitalUser: (id: string, data: {
+    fullName?: string;
+    email?: string;
+    hospitalPreference?: string;
+    specialization?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => api.patch(`/admin/hospital-users/${id}`, data),
 
   // Device management (Admin/SuperAdmin)
   getAllDevices: (userId?: string) => api.get('/admin/devices', { params: { userId } }),
@@ -302,6 +319,15 @@ export const policeAPI = {
 
   getLocationHistory: () => api.get('/police/location/history'),
   getLastLocation: () => api.get('/police/location/last'),
+
+  uploadProfilePhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    return api.post('/police/profile-photo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getProfilePhotoUrl: () => `${api.defaults.baseURL}/police/profile-photo`,
 };
 
 // Hospital API

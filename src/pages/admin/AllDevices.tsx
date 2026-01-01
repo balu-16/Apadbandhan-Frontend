@@ -120,8 +120,7 @@ const AllDevices = () => {
       setQrCodes(qrCodesRes.data);
       setStats(statsRes.data);
       setRegisteredDevices(devicesRes.data);
-    } catch (error: unknown) {
-      console.error("Failed to fetch data:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch devices",

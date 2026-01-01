@@ -109,8 +109,7 @@ const PartnerRequests = () => {
     try {
       const response = await partnersAPI.getAll();
       setRequests(response.data);
-    } catch (error) {
-      console.error("Failed to fetch requests:", error);
+    } catch {
       toast.error("Failed to load partner requests");
     } finally {
       setIsLoading(false);
@@ -121,8 +120,8 @@ const PartnerRequests = () => {
     try {
       const response = await partnersAPI.getStats();
       setStats(response.data);
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
+    } catch {
+      // stats failure shouldn't block UI
     }
   };
 
@@ -135,8 +134,7 @@ const PartnerRequests = () => {
       fetchStats();
       setIsDetailOpen(false);
       setReviewNotes("");
-    } catch (error) {
-      console.error("Failed to update status:", error);
+    } catch {
       toast.error("Failed to update request status");
     } finally {
       setIsUpdating(false);
@@ -145,15 +143,14 @@ const PartnerRequests = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this request?")) return;
-    
+
     try {
       await partnersAPI.delete(id);
       toast.success("Request deleted successfully");
       fetchRequests();
       fetchStats();
       setIsDetailOpen(false);
-    } catch (error) {
-      console.error("Failed to delete request:", error);
+    } catch {
       toast.error("Failed to delete request");
     }
   };

@@ -46,8 +46,7 @@ const AdminDashboard = () => {
     try {
       const response = await adminAPI.getStats();
       setStats(response.data);
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
+    } catch {
     } finally {
       setIsLoading(false);
     }
@@ -58,8 +57,7 @@ const AdminDashboard = () => {
     try {
       const response = await healthAPI.checkDetailed();
       setHealthStatus(response.data);
-    } catch (error) {
-      console.error("Failed to fetch health status:", error);
+    } catch {
       setHealthStatus({ status: 'error', timestamp: new Date().toISOString() });
     } finally {
       setIsHealthLoading(false);
@@ -260,9 +258,8 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                isSuperAdmin ? 'bg-orange-500/20' : 'bg-primary/20'
-              }`}>
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isSuperAdmin ? 'bg-orange-500/20' : 'bg-primary/20'
+                }`}>
                 {isSuperAdmin ? (
                   <UserCog className="h-8 w-8 text-orange-500" />
                 ) : (
@@ -274,7 +271,7 @@ const AdminDashboard = () => {
                   {isSuperAdmin ? 'Super Administrator' : 'Administrator'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {isSuperAdmin 
+                  {isSuperAdmin
                     ? 'Full access to all system features'
                     : 'Access to user and device management'
                   }
@@ -293,9 +290,9 @@ const AdminDashboard = () => {
               <Server className="h-5 w-5" />
               System Health
             </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={fetchHealthStatus}
               disabled={isHealthLoading}
             >
@@ -323,9 +320,9 @@ const AdminDashboard = () => {
                   <div>
                     <p className="font-medium">Uptime</p>
                     <p className="text-sm text-muted-foreground">
-                      {healthStatus.system?.uptime 
+                      {healthStatus.system?.uptime
                         ? formatUptime(healthStatus.system.uptime)
-                        : healthStatus.uptime 
+                        : healthStatus.uptime
                           ? formatUptime(healthStatus.uptime)
                           : 'N/A'}
                     </p>

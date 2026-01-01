@@ -19,10 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  Users, 
-  Plus, 
-  Trash2, 
+import {
+  Users,
+  Plus,
+  Trash2,
   Search,
   Loader2,
   Mail,
@@ -77,11 +77,11 @@ const UsersManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // User details modal state
   const [viewUser, setViewUser] = useState<User | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  
+
   // Form fields
   const [newUser, setNewUser] = useState({
     fullName: "",
@@ -101,8 +101,7 @@ const UsersManagement = () => {
       // Fetch only users with role='user'
       const response = await adminAPI.getAllUsers('user');
       setUsers(response.data);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch users",
@@ -141,8 +140,8 @@ const UsersManagement = () => {
         role: 'user',
         bloodGroup: newUser.bloodGroup || undefined,
         address: newUser.address || undefined,
-        medicalConditions: newUser.medicalConditions 
-          ? newUser.medicalConditions.split(',').map(c => c.trim()).filter(Boolean) 
+        medicalConditions: newUser.medicalConditions
+          ? newUser.medicalConditions.split(',').map(c => c.trim()).filter(Boolean)
           : undefined,
         emergencyContacts: validEmergencyContacts.length > 0 ? validEmergencyContacts : undefined,
       });
@@ -151,8 +150,8 @@ const UsersManagement = () => {
         description: "User created successfully",
       });
       setIsAddDialogOpen(false);
-      setNewUser({ 
-        fullName: "", email: "", phone: "", 
+      setNewUser({
+        fullName: "", email: "", phone: "",
         bloodGroup: "", address: "", medicalConditions: "",
         emergencyContacts: [{ name: "", phone: "", relation: "" }]
       });
@@ -465,7 +464,7 @@ const UsersManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow 
+                    <TableRow
                       key={user._id || user.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => {
@@ -493,11 +492,10 @@ const UsersManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          user.isActive 
-                            ? 'bg-green-500/20 text-green-500' 
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.isActive
+                            ? 'bg-green-500/20 text-green-500'
                             : 'bg-red-500/20 text-red-500'
-                        }`}>
+                          }`}>
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </TableCell>
@@ -530,7 +528,7 @@ const UsersManagement = () => {
           <DialogHeader>
             <DialogTitle>Delete User</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{selectedUser?.fullName}</strong>? 
+              Are you sure you want to delete <strong>{selectedUser?.fullName}</strong>?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -538,8 +536,8 @@ const UsersManagement = () => {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteUser}
               disabled={isSubmitting}
             >

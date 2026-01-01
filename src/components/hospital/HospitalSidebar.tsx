@@ -1,13 +1,15 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  Home, 
-  Users, 
+import {
+  Home,
+  Users,
   Bell,
   LogOut,
   Settings
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { alertsAPI } from "@/services/api";
 
 interface NavItem {
   icon: React.ElementType;
@@ -26,6 +28,23 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
+
+  // Fetch pending alerts count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const response = await alertsAPI.getCombinedStats();
+        setPendingAlertsCount(response.data?.pending || 0);
+      } catch (error) {
+        console.error('Failed to fetch pending alerts count:', error);
+      }
+    };
+    fetchPendingCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Dashboard", path: "/hospital" },
@@ -47,7 +66,7 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
   };
 
   return (
-    <aside 
+    <aside
       className={cn(
         "fixed left-0 h-screen bg-deepblue border-r border-border/30 flex flex-col z-50 transition-all duration-300 ease-in-out",
         isMobile ? "top-16 w-64" : "top-0",
@@ -63,9 +82,9 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
           isExpanded ? "p-4" : "p-2 justify-center"
         )}>
           <Link to="/hospital" className="flex items-center gap-3 group">
-            <img 
-              src="/logoAB.png" 
-              alt="Apadbandhav Logo" 
+            <img
+              src="/logoAB.png"
+              alt="Apadbandhav Logo"
               className={cn(
                 "object-contain flex-shrink-0 transition-all duration-300",
                 isExpanded ? "w-14 h-14" : "w-12 h-12"
@@ -109,15 +128,25 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
               {active && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-red-500 rounded-r-full shadow-glow" />
               )}
-              
+
               <item.icon className={cn(
                 "w-5 h-5 transition-all duration-300 flex-shrink-0",
                 active ? "text-red-500" : "group-hover:text-foreground"
               )} />
-              
+
               {(isExpanded || isMobile) && (
-                <span className="transition-colors duration-300 whitespace-nowrap overflow-hidden">
+                <span className="transition-colors duration-300 whitespace-nowrap overflow-hidden flex-1">
                   {item.label}
+                </span>
+              )}
+
+              {/* Pending alerts badge for Alerts menu item */}
+              {item.path === '/hospital/alerts' && pendingAlertsCount > 0 && (
+                <span className={cn(
+                  "flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full",
+                  (isExpanded || isMobile) ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
+                )}>
+                  {pendingAlertsCount > 99 ? '99+' : pendingAlertsCount}
                 </span>
               )}
             </Link>

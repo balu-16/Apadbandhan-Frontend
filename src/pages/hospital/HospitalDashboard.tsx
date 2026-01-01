@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { hospitalAPI, alertsAPI } from "@/services/api";
-import { 
-  Users, 
+import {
+  Users,
   Bell,
   AlertTriangle,
   CheckCircle,
@@ -35,20 +35,20 @@ interface Stats {
   resolvedAlerts: number;
 }
 
-const StatCard = ({ 
-  icon: Icon, 
-  label, 
-  value, 
+const StatCard = ({
+  icon: Icon,
+  label,
+  value,
   color,
-  delay 
-}: { 
-  icon: React.ElementType; 
-  label: string; 
-  value: number | string; 
+  delay
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: number | string;
   color: string;
   delay: string;
 }) => (
-  <div 
+  <div
     className="bg-card border border-border/50 rounded-2xl p-6 animate-fade-up opacity-0"
     style={{ animationDelay: delay, animationFillMode: "forwards" }}
   >
@@ -129,11 +129,12 @@ const HospitalDashboard = () => {
       setIsLoading(true);
     }
     try {
-      const [statsRes, alertsRes] = await Promise.all([
+      const [statsRes, alertsRes, hospitalStatsRes] = await Promise.all([
         alertsAPI.getCombinedStats().catch(() => ({ data: {} })),
         alertsAPI.getCombined('all').catch(() => ({ data: [] })),
+        hospitalAPI.getStats().catch(() => ({ data: { totalUsers: 0 } })),
       ]);
-      
+
       interface CombinedStats {
         total?: number;
         pending?: number;
@@ -142,15 +143,20 @@ const HospitalDashboard = () => {
         sos?: { total?: number };
       }
 
+      interface HospitalStats {
+        totalUsers?: number;
+      }
+
       const statsData = statsRes.data as CombinedStats;
-      
+      const hospitalStatsData = hospitalStatsRes.data as HospitalStats;
+
       setStats({
-        totalUsers: 0,
+        totalUsers: hospitalStatsData.totalUsers || 0,
         totalAlerts: statsData.total || 0,
         pendingAlerts: statsData.pending || 0,
         resolvedAlerts: statsData.resolved || 0,
       });
-      
+
       setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data as Alert[] : []);
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
@@ -248,7 +254,7 @@ const HospitalDashboard = () => {
 
       {/* Active Alerts Section */}
       {pendingAlerts.length > 0 && (
-        <div 
+        <div
           className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 mb-8 animate-fade-up opacity-0"
           style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}
         >
@@ -267,10 +273,10 @@ const HospitalDashboard = () => {
               Refresh
             </Button>
           </div>
-          
+
           <div className="space-y-3">
             {pendingAlerts.map((alert) => (
-              <div 
+              <div
                 key={alert._id}
                 onClick={() => handleAlertClick(alert)}
                 className="flex items-center justify-between p-4 bg-card rounded-xl border border-red-500/20 
@@ -306,8 +312,8 @@ const HospitalDashboard = () => {
                   <span className={cn(
                     "px-3 py-1 rounded-full text-xs font-medium",
                     alert.status === 'pending' ? "bg-yellow-500/20 text-yellow-500" :
-                    alert.status === 'assigned' ? "bg-blue-500/20 text-blue-500" :
-                    "bg-orange-500/20 text-orange-500"
+                      alert.status === 'assigned' ? "bg-blue-500/20 text-blue-500" :
+                        "bg-orange-500/20 text-orange-500"
                   )}>
                     {alert.status}
                   </span>
@@ -322,7 +328,7 @@ const HospitalDashboard = () => {
       )}
 
       {/* Recent Alerts */}
-      <div 
+      <div
         className="bg-card border border-border/50 rounded-2xl p-6 animate-fade-up opacity-0"
         style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}
       >
@@ -341,11 +347,11 @@ const HospitalDashboard = () => {
             Refresh
           </Button>
         </div>
-        
+
         {recentAlerts.length > 0 ? (
           <div className="space-y-3">
             {recentAlerts.map((alert) => (
-              <div 
+              <div
                 key={alert._id}
                 onClick={() => handleAlertClick(alert)}
                 className="flex items-center justify-between p-4 bg-muted/30 rounded-xl cursor-pointer 
@@ -354,8 +360,8 @@ const HospitalDashboard = () => {
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center",
-                    alert.status === 'resolved' ? "bg-green-500/20" : 
-                    alert.source === 'sos' ? "bg-red-500/20" : "bg-orange-500/20"
+                    alert.status === 'resolved' ? "bg-green-500/20" :
+                      alert.source === 'sos' ? "bg-red-500/20" : "bg-orange-500/20"
                   )}>
                     {alert.status === 'resolved' ? (
                       <CheckCircle className="w-5 h-5 text-green-500" />
@@ -379,8 +385,8 @@ const HospitalDashboard = () => {
                   <span className={cn(
                     "px-3 py-1 rounded-full text-xs font-medium",
                     alert.status === 'resolved' ? "bg-green-500/20 text-green-500" :
-                    alert.status === 'pending' ? "bg-yellow-500/20 text-yellow-500" :
-                    "bg-red-500/20 text-red-500"
+                      alert.status === 'pending' ? "bg-yellow-500/20 text-yellow-500" :
+                        "bg-red-500/20 text-red-500"
                   )}>
                     {alert.status}
                   </span>

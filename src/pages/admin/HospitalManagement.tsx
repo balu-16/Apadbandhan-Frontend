@@ -19,10 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  Cross, 
-  Plus, 
-  Trash2, 
+import {
+  Cross,
+  Plus,
+  Trash2,
   Search,
   Loader2,
   Mail,
@@ -31,7 +31,8 @@ import {
   MapPin,
   Navigation,
   Building2,
-  Stethoscope
+  Stethoscope,
+  Pencil
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +58,12 @@ interface HospitalUser {
   role: string;
   isActive: boolean;
   createdAt: string;
+  hospitalPreference?: string;
+  specialization?: string;
+  address?: string;
+  baseLocation?: {
+    coordinates?: [number, number];
+  };
 }
 
 const HospitalManagement = () => {
@@ -64,10 +71,21 @@ const HospitalManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState<HospitalUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
+  const [editHospital, setEditHospital] = useState({
+    fullName: "",
+    email: "",
+    hospitalPreference: "",
+    specialization: "",
+    address: "",
+    latitude: "",
+    longitude: "",
+  });
+
   const [newHospital, setNewHospital] = useState({
     fullName: "",
     email: "",
@@ -85,8 +103,7 @@ const HospitalManagement = () => {
     try {
       const response = await adminAPI.getAllHospitalUsers();
       setHospitalUsers(response.data);
-    } catch (error) {
-      console.error("Failed to fetch hospital users:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch hospital accounts",
@@ -137,10 +154,10 @@ const HospitalManagement = () => {
         description: "Hospital account created successfully",
       });
       setIsAddDialogOpen(false);
-      setNewHospital({ 
-        fullName: "", email: "", phone: "", 
-        hospitalPreference: "", specialization: "", 
-        address: "", latitude: "", longitude: "" 
+      setNewHospital({
+        fullName: "", email: "", phone: "",
+        hospitalPreference: "", specialization: "",
+        address: "", latitude: "", longitude: ""
       });
       fetchHospitalUsers();
     } catch (error: unknown) {
@@ -180,6 +197,60 @@ const HospitalManagement = () => {
     }
   };
 
+  const handleEditHospital = async () => {
+    if (!selectedHospital || !editHospital.fullName) {
+      toast({
+        title: "Error",
+        description: "Please fill in required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await adminAPI.updateHospitalUser(selectedHospital._id || selectedHospital.id, {
+        fullName: editHospital.fullName,
+        email: editHospital.email,
+        hospitalPreference: editHospital.hospitalPreference || undefined,
+        specialization: editHospital.specialization || undefined,
+        address: editHospital.address || undefined,
+        latitude: editHospital.latitude ? parseFloat(editHospital.latitude) : undefined,
+        longitude: editHospital.longitude ? parseFloat(editHospital.longitude) : undefined,
+      });
+      toast({
+        title: "Success",
+        description: "Hospital account updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedHospital(null);
+      fetchHospitalUsers();
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to update hospital account",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openEditDialog = (hospital: HospitalUser) => {
+    setSelectedHospital(hospital);
+    setEditHospital({
+      fullName: hospital.fullName || "",
+      email: hospital.email || "",
+      hospitalPreference: hospital.hospitalPreference || "",
+      specialization: hospital.specialization || "",
+      address: hospital.address || "",
+      latitude: hospital.baseLocation?.coordinates?.[1]?.toString() || "",
+      longitude: hospital.baseLocation?.coordinates?.[0]?.toString() || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
   const filteredHospitals = hospitalUsers.filter(
     (hospital) =>
       hospital.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -215,7 +286,7 @@ const HospitalManagement = () => {
             Manage hospital accounts ({hospitalUsers.length} total)
           </p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -310,7 +381,7 @@ const HospitalManagement = () => {
                 </h3>
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg mb-2">
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">Important:</strong> Exact coordinates are required for emergency alert routing. 
+                    <strong className="text-foreground">Important:</strong> Exact coordinates are required for emergency alert routing.
                     You can find coordinates using Google Maps (right-click on location).
                   </p>
                 </div>
@@ -423,17 +494,27 @@ const HospitalManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            setSelectedHospital(hospital);
-                            setIsDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary"
+                            onClick={() => openEditDialog(hospital)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              setSelectedHospital(hospital);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -444,12 +525,102 @@ const HospitalManagement = () => {
         </CardContent>
       </Card>
 
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-red-500" />
+              Edit Hospital Account
+            </DialogTitle>
+            <DialogDescription>
+              Update the details for {selectedHospital?.fullName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-fullName">Full Name *</Label>
+              <Input
+                id="edit-fullName"
+                value={editHospital.fullName}
+                onChange={(e) => setEditHospital({ ...editHospital, fullName: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editHospital.email}
+                onChange={(e) => setEditHospital({ ...editHospital, email: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-hospitalPreference">Hospital Type</Label>
+                <Input
+                  id="edit-hospitalPreference"
+                  value={editHospital.hospitalPreference}
+                  onChange={(e) => setEditHospital({ ...editHospital, hospitalPreference: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-specialization">Specialization</Label>
+                <Input
+                  id="edit-specialization"
+                  value={editHospital.specialization}
+                  onChange={(e) => setEditHospital({ ...editHospital, specialization: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-address">Address</Label>
+              <Textarea
+                id="edit-address"
+                value={editHospital.address}
+                onChange={(e) => setEditHospital({ ...editHospital, address: e.target.value })}
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-latitude">Latitude</Label>
+                <Input
+                  id="edit-latitude"
+                  type="number"
+                  value={editHospital.latitude}
+                  onChange={(e) => setEditHospital({ ...editHospital, latitude: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-longitude">Longitude</Label>
+                <Input
+                  id="edit-longitude"
+                  type="number"
+                  value={editHospital.longitude}
+                  onChange={(e) => setEditHospital({ ...editHospital, longitude: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditHospital} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Hospital Account</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the hospital account for "{selectedHospital?.fullName}"? 
+              Are you sure you want to delete the hospital account for "{selectedHospital?.fullName}"?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -457,8 +628,8 @@ const HospitalManagement = () => {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteHospital}
               disabled={isSubmitting}
             >

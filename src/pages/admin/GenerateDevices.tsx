@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,8 +77,7 @@ const GenerateDevices = () => {
       ]);
       setQrCodes(qrCodesRes.data);
       setStats(statsRes.data);
-    } catch (error: unknown) {
-      console.error("Failed to fetch data:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch device data",

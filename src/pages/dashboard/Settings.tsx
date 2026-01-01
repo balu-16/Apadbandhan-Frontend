@@ -20,10 +20,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usersAPI } from "@/services/api";
-import { 
-  User, 
-  Phone, 
-  Mail, 
+import {
+  User,
+  Phone,
+  Mail,
   Camera,
   Building2,
   Bell,
@@ -68,17 +68,17 @@ const Settings = () => {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // User Information
   const [userInfo, setUserInfo] = useState({
     fullName: "",
     email: "",
     phone: "",
   });
-  
+
   // Hospital Preference
-  const [hospitalPreference, setHospitalPreference] = useState("government");
-  
+  const [hospitalPreference, setHospitalPreference] = useState<"government" | "private" | "both">("government");
+
   // Notification Preferences
   const [notifications, setNotifications] = useState({
     accidentAlerts: true,
@@ -97,7 +97,7 @@ const Settings = () => {
       try {
         const response = await usersAPI.getProfile(user.id);
         const userData = response.data;
-        
+
         setUserInfo({
           fullName: userData.fullName || "",
           email: userData.email || "",
@@ -180,7 +180,7 @@ const Settings = () => {
 
   const handleSaveProfile = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingProfile(true);
     try {
       await usersAPI.updateProfile(user.id, {
@@ -206,7 +206,7 @@ const Settings = () => {
 
   const handleSaveHospitalPreference = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingHospital(true);
     try {
       await usersAPI.updateProfile(user.id, {
@@ -230,7 +230,7 @@ const Settings = () => {
 
   const handleSaveNotifications = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingNotifications(true);
     try {
       await usersAPI.updateProfile(user.id, {
@@ -256,7 +256,7 @@ const Settings = () => {
 
   const handleDeleteAccount = async () => {
     if (!user?.id || deleteConfirmText !== "delete my account") return;
-    
+
     setIsDeleting(true);
     try {
       await usersAPI.deleteAccount(user.id);
@@ -302,19 +302,19 @@ const Settings = () => {
           <User className="w-5 h-5 text-primary" />
           User Information
         </h2>
-        
+
         <div className="flex flex-col md:flex-row gap-6">
           {/* Profile Photo */}
           <div className="flex flex-col items-center">
             <div className="relative mb-3">
-              <div 
+              <div
                 className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={handlePhotoClick}
               >
                 {profilePhoto ? (
-                  <img 
-                    src={profilePhoto} 
-                    alt="Profile" 
+                  <img
+                    src={profilePhoto}
+                    alt="Profile"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -328,7 +328,7 @@ const Settings = () => {
                   </div>
                 )}
               </div>
-              <button 
+              <button
                 onClick={handlePhotoClick}
                 disabled={isUploadingPhoto}
                 className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -345,7 +345,7 @@ const Settings = () => {
               className="hidden"
             />
           </div>
-          
+
           {/* Form Fields */}
           <div className="flex-1 space-y-4">
             <div>
@@ -360,7 +360,7 @@ const Settings = () => {
                 placeholder="Enter your full name"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
@@ -373,7 +373,7 @@ const Settings = () => {
                 placeholder="Enter your email"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Phone className="w-4 h-4 inline mr-2" />
@@ -394,10 +394,10 @@ const Settings = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-1">Phone number cannot be changed</p>
             </div>
-            
+
             {/* Save Profile Button */}
             <div className="pt-2">
-              <Button 
+              <Button
                 variant="outline"
                 onClick={handleSaveProfile}
                 disabled={isSavingProfile}
@@ -426,14 +426,14 @@ const Settings = () => {
           <Building2 className="w-5 h-5 text-primary" />
           Hospital Preference
         </h2>
-        
+
         <p className="text-muted-foreground mb-4">
           Choose your preferred hospital type for emergency situations
         </p>
-        
-        <RadioGroup 
-          value={hospitalPreference} 
-          onValueChange={setHospitalPreference}
+
+        <RadioGroup
+          value={hospitalPreference}
+          onValueChange={(value) => setHospitalPreference(value as "government" | "private" | "both")}
           className="space-y-3"
         >
           <div className={cn(
@@ -455,7 +455,7 @@ const Settings = () => {
               </div>
             </Label>
           </div>
-          
+
           <div className={cn(
             "flex items-center space-x-4 p-4 rounded-xl border transition-all duration-300 cursor-pointer",
             hospitalPreference === "private"
@@ -496,10 +496,10 @@ const Settings = () => {
             </Label>
           </div>
         </RadioGroup>
-        
+
         {/* Save Hospital Preference Button */}
         <div className="mt-6 flex justify-end">
-          <Button 
+          <Button
             variant="outline"
             onClick={handleSaveHospitalPreference}
             disabled={isSavingHospital}
@@ -529,7 +529,7 @@ const Settings = () => {
         <p className="text-muted-foreground mb-4">
           Choose your preferred theme for the application
         </p>
-        
+
         <div className="grid grid-cols-3 gap-4">
           {/* Light Theme */}
           <div
@@ -614,7 +614,7 @@ const Settings = () => {
           <Bell className="w-5 h-5 text-primary" />
           Preferences & Notifications
         </h2>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
             <div className="flex items-center gap-3">
@@ -630,12 +630,12 @@ const Settings = () => {
             </div>
             <Switch
               checked={notifications.accidentAlerts}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setNotifications({ ...notifications, accidentAlerts: checked })
               }
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -650,12 +650,12 @@ const Settings = () => {
             </div>
             <Switch
               checked={notifications.smsNotifications}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setNotifications({ ...notifications, smsNotifications: checked })
               }
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -670,16 +670,16 @@ const Settings = () => {
             </div>
             <Switch
               checked={notifications.locationTracking}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setNotifications({ ...notifications, locationTracking: checked })
               }
             />
           </div>
         </div>
-        
+
         {/* Save Notifications Button */}
         <div className="mt-6 flex justify-end">
-          <Button 
+          <Button
             variant="outline"
             onClick={handleSaveNotifications}
             disabled={isSavingNotifications}
@@ -709,8 +709,8 @@ const Settings = () => {
         <p className="text-muted-foreground mb-6">
           Sign out from your account on this device.
         </p>
-        
-        <Button 
+
+        <Button
           variant="outline"
           onClick={() => {
             logout();
@@ -732,7 +732,7 @@ const Settings = () => {
         <p className="text-muted-foreground mb-6">
           Once you delete your account, there is no going back. All your data will be permanently removed.
         </p>
-        
+
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" className="gap-2">

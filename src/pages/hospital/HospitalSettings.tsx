@@ -16,11 +16,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { hospitalAPI } from "@/services/api";
-import { 
-  User, 
-  Phone, 
-  Mail, 
+import { hospitalAPI, usersAPI } from "@/services/api";
+import {
+  User,
+  Phone,
+  Mail,
   Camera,
   Bell,
   MapPin,
@@ -63,20 +63,20 @@ const HospitalSettings = () => {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // On Duty status for location tracking
   const [onDuty, setOnDuty] = useState(false);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
-  
+
   // User Information
   const [userInfo, setUserInfo] = useState({
     fullName: "",
     email: "",
     phone: "",
   });
-  
+
   // Notification Preferences
   const [notifications, setNotifications] = useState({
     accidentAlerts: true,
@@ -99,8 +99,7 @@ const HospitalSettings = () => {
   // Refresh user data from server on mount to get latest isActive status
   useEffect(() => {
     refreshUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [refreshUser]);
 
   // Load user data from auth context
   useEffect(() => {
@@ -185,13 +184,13 @@ const HospitalSettings = () => {
             timeout: 10000,
           });
         });
-        
+
         setLocationPermission('granted');
-        
+
         // Save onDuty to database
         await hospitalAPI.updateProfile({ onDuty: true });
         setOnDuty(true);
-        
+
         toast({
           title: "Location Tracking Active",
           description: "Your location will be updated every 30 seconds when you move.",
@@ -251,6 +250,10 @@ const HospitalSettings = () => {
 
     setIsUploadingPhoto(true);
     try {
+      // Upload photo to server
+      await usersAPI.uploadProfilePhoto(user.id, file);
+
+      // Also show preview locally
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -261,7 +264,7 @@ const HospitalSettings = () => {
 
       toast({
         title: "Photo Updated",
-        description: "Your profile photo has been updated.",
+        description: "Your profile photo has been uploaded.",
       });
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
@@ -277,10 +280,19 @@ const HospitalSettings = () => {
 
   const handleSaveProfile = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingProfile(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await Promise.all([
+        usersAPI.updateProfile(user.id, {
+          fullName: userInfo.fullName,
+          email: userInfo.email,
+        }),
+        hospitalAPI.updateProfile({
+          fullName: userInfo.fullName,
+        })
+      ]);
+      await refreshUser();
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved.",
@@ -299,10 +311,14 @@ const HospitalSettings = () => {
 
   const handleSaveNotifications = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingNotifications(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await usersAPI.updateProfile(user.id, {
+        accidentAlerts: notifications.accidentAlerts,
+        smsNotifications: notifications.smsNotifications,
+        locationTracking: notifications.locationTracking,
+      });
       toast({
         title: "Notification Settings Saved",
         description: "Your notification preferences have been updated.",
@@ -321,10 +337,10 @@ const HospitalSettings = () => {
 
   const handleDeleteAccount = async () => {
     if (!user?.id || deleteConfirmText !== "delete my account") return;
-    
+
     setIsDeleting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await usersAPI.deleteAccount(user.id);
       toast({
         title: "Account Deleted",
         description: "Your account has been permanently deleted.",
@@ -367,7 +383,7 @@ const HospitalSettings = () => {
           <Radio className="w-5 h-5 text-red-500" />
           Active Status
         </h2>
-        
+
         <div className="flex items-center justify-between p-4 bg-red-500/10 rounded-xl border border-red-500/30">
           <div className="flex items-center gap-3">
             <div className={cn(
@@ -382,7 +398,7 @@ const HospitalSettings = () => {
             <div>
               <p className="font-medium text-foreground">Are you on duty?</p>
               <p className="text-sm text-muted-foreground">
-                {onDuty 
+                {onDuty
                   ? "Your location is being tracked every 30 seconds"
                   : "Enable to share your location for emergency response"
                 }
@@ -408,11 +424,11 @@ const HospitalSettings = () => {
           <User className="w-5 h-5 text-primary" />
           User Information
         </h2>
-        
+
         <div className="flex flex-col md:flex-row gap-6">
           <div className="flex flex-col items-center">
             <div className="relative mb-3">
-              <div 
+              <div
                 className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={handlePhotoClick}
               >
@@ -429,7 +445,7 @@ const HospitalSettings = () => {
                   </div>
                 )}
               </div>
-              <button 
+              <button
                 onClick={handlePhotoClick}
                 disabled={isUploadingPhoto}
                 className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -446,7 +462,7 @@ const HospitalSettings = () => {
               className="hidden"
             />
           </div>
-          
+
           <div className="flex-1 space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -460,7 +476,7 @@ const HospitalSettings = () => {
                 placeholder="Enter your full name"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
@@ -473,7 +489,7 @@ const HospitalSettings = () => {
                 placeholder="Enter your email"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Phone className="w-4 h-4 inline mr-2" />
@@ -493,9 +509,9 @@ const HospitalSettings = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-1">Phone number cannot be changed</p>
             </div>
-            
+
             <div className="pt-2">
-              <Button 
+              <Button
                 variant="outline"
                 onClick={handleSaveProfile}
                 disabled={isSavingProfile}
@@ -519,7 +535,7 @@ const HospitalSettings = () => {
           Appearance
         </h2>
         <p className="text-muted-foreground mb-4">Choose your preferred theme</p>
-        
+
         <div className="grid grid-cols-3 gap-4">
           {[
             { key: 'light', icon: Sun, label: 'Light', desc: 'Bright & clean' },
@@ -552,7 +568,7 @@ const HospitalSettings = () => {
           <Bell className="w-5 h-5 text-primary" />
           Preferences & Notifications
         </h2>
-        
+
         <div className="space-y-4">
           {[
             { key: 'accidentAlerts', icon: AlertTriangle, label: 'Accident Alerts', desc: 'Receive notifications for detected accidents' },
@@ -576,7 +592,7 @@ const HospitalSettings = () => {
             </div>
           ))}
         </div>
-        
+
         <div className="mt-6 flex justify-end">
           <Button variant="outline" onClick={handleSaveNotifications} disabled={isSavingNotifications} className="gap-2">
             {isSavingNotifications ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Notifications</>}
@@ -603,7 +619,7 @@ const HospitalSettings = () => {
           Danger Zone
         </h2>
         <p className="text-muted-foreground mb-6">Once you delete your account, there is no going back.</p>
-        
+
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" className="gap-2">

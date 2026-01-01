@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { alertsAPI, sosAPI } from "@/services/api";
-import { 
+import { alertsAPI } from "@/services/api";
+import {
   Bell,
   AlertTriangle,
   CheckCircle,
@@ -26,13 +26,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-interface UserInfo {
-  fullName?: string;
-  name?: string;
-  phone?: string;
-  email?: string;
-}
-
 interface Alert {
   _id: string;
   type: string;
@@ -43,16 +36,6 @@ interface Alert {
     latitude: number;
     longitude: number;
     address?: string;
-  };
-  createdAt: string;
-  resolvedAt?: string;
-}
-
-interface SosEvent {
-  _id: string;
-  status: string;
-  victimLocation?: {
-    coordinates: [number, number];
   };
   createdAt: string;
   resolvedAt?: string;
@@ -79,8 +62,8 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: { alert: Alert | null;
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
               <Badge className={cn(
-                alert.status === 'resolved' 
-                  ? "bg-green-500/20 text-green-500" 
+                alert.status === 'resolved'
+                  ? "bg-green-500/20 text-green-500"
                   : "bg-red-500/20 text-red-500"
               )}>
                 {alert.status}
@@ -93,7 +76,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: { alert: Alert | null;
               </Badge>
             </div>
           </div>
-          
+
           {alert.location && (
             <div>
               <p className="text-sm text-muted-foreground mb-1">Location</p>
@@ -138,28 +121,28 @@ const UserAlertsPage = () => {
     else setIsLoading(true);
 
     try {
-      // Fetch user's SOS history
-      const sosResponse = await sosAPI.getHistory();
-      const sosEvents: SosEvent[] = Array.isArray(sosResponse.data) ? sosResponse.data : [];
-      
-      // Convert SOS events to alert format
-      const userAlerts: Alert[] = sosEvents.map((sos) => ({
-        _id: sos._id,
-        type: 'SOS',
-        source: 'sos' as const,
-        status: sos.status,
-        severity: 'critical',
-        location: sos.victimLocation ? {
-          latitude: sos.victimLocation.coordinates[1],
-          longitude: sos.victimLocation.coordinates[0],
-        } : undefined,
-        createdAt: sos.createdAt,
-        resolvedAt: sos.resolvedAt,
+      // Fetch combined alerts (both SOS and device-triggered alerts)
+      const response = await alertsAPI.getCombined('all');
+      const combinedAlerts = Array.isArray(response.data) ? response.data : [];
+
+      // Map to standard Alert format
+      const userAlerts: Alert[] = combinedAlerts.map((item: any) => ({
+        _id: item._id,
+        type: item.type || (item.source === 'sos' ? 'SOS' : 'Accident'),
+        source: item.source || 'alert',
+        status: item.status,
+        severity: item.severity || 'critical',
+        location: item.location || (item.victimLocation ? {
+          latitude: item.victimLocation.coordinates?.[1],
+          longitude: item.victimLocation.coordinates?.[0],
+        } : undefined),
+        createdAt: item.createdAt,
+        resolvedAt: item.resolvedAt,
       }));
 
       // Sort by date descending
       userAlerts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
+
       setAlerts(userAlerts);
     } catch (error: unknown) {
       console.error("Failed to fetch user alerts:", error);
@@ -183,8 +166,8 @@ const UserAlertsPage = () => {
     const searchLower = searchQuery.toLowerCase();
     const alertType = alert.type || '';
     const alertStatus = alert.status || '';
-    return alertType.toLowerCase().includes(searchLower) || 
-           alertStatus.toLowerCase().includes(searchLower);
+    return alertType.toLowerCase().includes(searchLower) ||
+      alertStatus.toLowerCase().includes(searchLower);
   });
 
   const stats = {
@@ -210,7 +193,7 @@ const UserAlertsPage = () => {
             <Bell className="w-7 h-7 text-orange-500" />
             My Alerts
           </h1>
-          <p className="text-muted-foreground">View all SOS alerts you have raised</p>
+          <p className="text-muted-foreground">View all your SOS and accident alerts</p>
         </div>
         <Button
           variant="outline"
@@ -254,7 +237,7 @@ const UserAlertsPage = () => {
       {filteredAlerts.length > 0 ? (
         <div className="space-y-3">
           {filteredAlerts.map((alert) => (
-            <div 
+            <div
               key={alert._id}
               className="bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 transition-all"
             >
@@ -262,10 +245,10 @@ const UserAlertsPage = () => {
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center",
-                    alert.source === 'sos' 
-                      ? "bg-purple-500/20" 
-                      : alert.status === 'resolved' 
-                        ? "bg-green-500/20" 
+                    alert.source === 'sos'
+                      ? "bg-purple-500/20"
+                      : alert.status === 'resolved'
+                        ? "bg-green-500/20"
                         : "bg-orange-500/20"
                   )}>
                     {alert.source === 'sos' ? (
@@ -281,8 +264,8 @@ const UserAlertsPage = () => {
                       <p className="font-semibold">{alert.type || 'Alert'}</p>
                       <Badge variant="outline" className={cn(
                         "text-xs",
-                        alert.source === 'sos' 
-                          ? "border-purple-500/50 text-purple-500" 
+                        alert.source === 'sos'
+                          ? "border-purple-500/50 text-purple-500"
                           : "border-orange-500/50 text-orange-500"
                       )}>
                         {alert.source === 'sos' ? 'SOS' : 'Accident'}
@@ -295,8 +278,8 @@ const UserAlertsPage = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge className={cn(
-                    alert.status === 'resolved' 
-                      ? "bg-green-500/20 text-green-500" 
+                    alert.status === 'resolved'
+                      ? "bg-green-500/20 text-green-500"
                       : "bg-red-500/20 text-red-500"
                   )}>
                     {alert.status || 'pending'}
@@ -320,7 +303,7 @@ const UserAlertsPage = () => {
           <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-semibold text-lg mb-2">No Alerts Found</h3>
           <p className="text-muted-foreground">
-            You haven't raised any SOS alerts yet
+            You haven't triggered any alerts yet
           </p>
         </div>
       )}

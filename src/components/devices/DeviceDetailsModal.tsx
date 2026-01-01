@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 // Component to fit map bounds when locations change
 const FitBoundsToMarkers = ({ locations }: { locations: [number, number][] }) => {
   const map = useMap();
-  
+
   useEffect(() => {
     if (locations.length > 1) {
       const bounds = L.latLngBounds(locations);
@@ -15,7 +15,7 @@ const FitBoundsToMarkers = ({ locations }: { locations: [number, number][] }) =>
       map.setView(locations[0], 13);
     }
   }, [locations, map]);
-  
+
   return null;
 };
 import {
@@ -48,7 +48,7 @@ import { Button } from "@/components/ui/button";
 import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { cn } from "@/lib/utils";
 import { deviceLocationsAPI, sosAPI } from "@/services/api";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 interface AxiosErrorLike {
   response?: {
@@ -179,6 +179,7 @@ interface DeviceDetailsModalProps {
 const LOCATION_REFRESH_INTERVAL = 20000; // 20 seconds
 
 const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalProps) => {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("info");
   const [locationHistory, setLocationHistory] = useState<LocationHistory[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -186,7 +187,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   const [isTriggingSOS, setIsTriggingSOS] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Map filter state
   const [mapFilters, setMapFilters] = useState({
     showStart: true,
@@ -195,7 +196,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
     showCurrent: true,
     showRoute: true,
   });
-  
+
   // Location tracking context for permission status and current location
   const { permissionStatus, currentLocation, lastKnownLocation, locationError, requestLocationPermission } = useLocationTracking();
 
@@ -204,38 +205,38 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   const hasLocationHistory = locationHistory.length > 0;
   const hasBrowserLocation = currentLocation?.latitude && currentLocation?.longitude;
   const hasLastKnownLocation = lastKnownLocation?.latitude && lastKnownLocation?.longitude;
-  
+
   // Priority: locationHistory > device.location > currentLocation > lastKnownLocation > default
-  const lat = hasLocationHistory 
-    ? locationHistory[locationHistory.length - 1].latitude 
-    : hasLocation 
+  const lat = hasLocationHistory
+    ? locationHistory[locationHistory.length - 1].latitude
+    : hasLocation
       ? device?.location?.latitude ?? 20.5937
-      : hasBrowserLocation 
+      : hasBrowserLocation
         ? currentLocation?.latitude ?? 20.5937
-        : hasLastKnownLocation 
+        : hasLastKnownLocation
           ? lastKnownLocation?.latitude ?? 20.5937
           : 20.5937;
-  const lng = hasLocationHistory 
-    ? locationHistory[locationHistory.length - 1].longitude 
-    : hasLocation 
+  const lng = hasLocationHistory
+    ? locationHistory[locationHistory.length - 1].longitude
+    : hasLocation
       ? device?.location?.longitude ?? 78.9629
-      : hasBrowserLocation 
+      : hasBrowserLocation
         ? currentLocation?.longitude ?? 78.9629
-        : hasLastKnownLocation 
+        : hasLastKnownLocation
           ? lastKnownLocation?.longitude ?? 78.9629
           : 78.9629;
-  
+
   // Check if we have any location to show
   const hasAnyLocation = hasLocationHistory || hasLocation || hasBrowserLocation || hasLastKnownLocation;
 
   // Create route coordinates for polyline - memoize to avoid unnecessary recalculations
-  const routeCoordinates: [number, number][] = useMemo(() => 
+  const routeCoordinates: [number, number][] = useMemo(() =>
     locationHistory.map(loc => [loc.latitude, loc.longitude]),
     [locationHistory]
   );
 
   // Map key to force re-render when locations change
-  const mapKey = useMemo(() => 
+  const mapKey = useMemo(() =>
     `map-${locationHistory.length}-${lat}-${lng}`,
     [locationHistory.length, lat, lng]
   );
@@ -246,7 +247,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
     // Try _id first (MongoDB format), then id (transformed format)
     const id = device._id || device.id;
     if (!id) return null;
-    
+
     // If it's an object with $oid (MongoDB extended JSON), extract it
     if (typeof id === 'object' && id !== null && '$oid' in id) {
       return (id as { $oid: string }).$oid;
@@ -269,13 +270,13 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
     } else {
       setIsRefreshing(true);
     }
-    
+
     try {
       const response = await deviceLocationsAPI.getByDevice(deviceId);
-      
+
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         // Sort by recordedAt ascending (oldest first for route)
-        const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) => 
+        const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) =>
           new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
         );
         setLocationHistory(sortedLocations);
@@ -386,8 +387,8 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
               variant={device.status === "online" ? "default" : "secondary"}
               className={cn(
                 "ml-auto",
-                device.status === "online" 
-                  ? "bg-green-500/20 text-green-500" 
+                device.status === "online"
+                  ? "bg-green-500/20 text-green-500"
                   : "bg-muted text-muted-foreground"
               )}
             >
@@ -463,8 +464,8 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   </h3>
                   <div className="space-y-3">
                     {device.emergencyContacts.map((contact, index) => (
-                      <div 
-                        key={index} 
+                      <div
+                        key={index}
                         className="flex items-center justify-between bg-background/50 rounded-lg p-3"
                       >
                         <div className="flex items-center gap-3">
@@ -521,11 +522,11 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                         </div>
                       </div>
                     )}
-                    {!device.insurance.healthInsuranceNumber && 
-                     !device.insurance.vehicleInsuranceNumber && 
-                     !device.insurance.termInsuranceNumber && (
-                      <p className="text-muted-foreground text-sm">No insurance information added</p>
-                    )}
+                    {!device.insurance.healthInsuranceNumber &&
+                      !device.insurance.vehicleInsuranceNumber &&
+                      !device.insurance.termInsuranceNumber && (
+                        <p className="text-muted-foreground text-sm">No insurance information added</p>
+                      )}
                   </div>
                 </div>
               )}
@@ -624,17 +625,17 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   onClick={async () => {
                     // Prevent duplicate SOS triggers
                     if (isTriggingSOS) return;
-                    
+
                     const deviceId = getDeviceId();
                     if (!deviceId) {
-                      toast.error("Device ID not found");
+                      toast({ title: "Error", description: "Device ID not found", variant: "destructive" });
                       return;
                     }
-                    
+
                     // Get coordinates
                     let lat: number | undefined;
                     let lng: number | undefined;
-                    
+
                     if (currentLocation?.latitude && currentLocation?.longitude) {
                       lat = currentLocation.latitude;
                       lng = currentLocation.longitude;
@@ -645,18 +646,18 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                       lat = device.location.latitude;
                       lng = device.location.longitude;
                     }
-                    
+
                     if (!lat || !lng) {
-                      toast.error("Location not available. Please enable location services.");
+                      toast({ title: "Error", description: "Location not available. Please enable location services.", variant: "destructive" });
                       return;
                     }
-                    
+
                     setIsTriggingSOS(true);
                     try {
                       // Trigger actual SOS alert
                       await sosAPI.trigger({ lat, lng });
-                      toast.success("SOS alert triggered! Help is on the way.");
-                      
+                      toast({ title: "SOS Triggered", description: "SOS alert triggered! Help is on the way." });
+
                       // Also record as SOS location
                       await deviceLocationsAPI.create({
                         deviceId,
@@ -666,12 +667,13 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                         source: 'browser',
                         isSOS: true,
                       });
-                      
+
                       // Refresh to show the new SOS location
                       fetchLocationHistory(false);
-                    } catch (error: any) {
-                      const message = error.response?.data?.message || "Failed to trigger SOS";
-                      toast.error(message);
+                    } catch (error: unknown) {
+                      const err = error as AxiosErrorLike;
+                      const message = err.response?.data?.message || "Failed to trigger SOS";
+                      toast({ title: "Error", description: message, variant: "destructive" });
                       console.error('Failed to trigger SOS:', error);
                     } finally {
                       setIsTriggingSOS(false);
@@ -707,12 +709,12 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                    
+
                     {/* Auto-fit bounds to markers */}
                     {routeCoordinates.length > 0 && (
                       <FitBoundsToMarkers locations={routeCoordinates} />
                     )}
-                    
+
                     {/* Route line connecting all points */}
                     {locationHistory.length > 1 && mapFilters.showRoute && (
                       <Polyline
@@ -726,8 +728,8 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
 
                     {/* Start Point Marker (Green Circle) - Show for first location in history */}
                     {locationHistory.length > 0 && mapFilters.showStart && (
-                      <Marker 
-                        position={[locationHistory[0].latitude, locationHistory[0].longitude]} 
+                      <Marker
+                        position={[locationHistory[0].latitude, locationHistory[0].longitude]}
                         icon={startIcon}
                       >
                         <Tooltip permanent={false} direction="top" offset={[0, -10]}>
@@ -743,7 +745,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                               <div className="text-xs text-gray-600">{locationHistory[0].address}</div>
                             )}
                             <div className="text-xs text-gray-500 mt-1">
-                              Lat: {locationHistory[0].latitude.toFixed(6)}<br/>
+                              Lat: {locationHistory[0].latitude.toFixed(6)}<br />
                               Lng: {locationHistory[0].longitude.toFixed(6)}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
@@ -759,54 +761,54 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                       // Skip if it's an SOS point and SOS filter is off, or if it's a regular waypoint and waypoints filter is off
                       if (loc.isSOS && !mapFilters.showSOS) return null;
                       if (!loc.isSOS && !mapFilters.showWaypoints) return null;
-                      
+
                       return (
-                      <CircleMarker
-                        key={loc._id}
-                        center={[loc.latitude, loc.longitude]}
-                        radius={loc.isSOS ? 10 : 8}
-                        fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"}
-                        fillOpacity={0.9}
-                        color="white"
-                        weight={loc.isSOS ? 4 : 3}
-                      >
-                        <Tooltip permanent={false} direction="top" offset={[0, -5]}>
-                          <div className="text-xs font-mono">
-                            {loc.isSOS ? "🚨 SOS" : "📍"} {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
-                          </div>
-                        </Tooltip>
-                        <Popup>
-                          <div className="text-center min-w-[150px]">
-                            <div className={`font-bold mb-1 ${loc.isSOS ? "text-red-600" : "text-blue-600"}`}>
-                              {loc.isSOS ? "🚨 SOS Alert" : `📍 Waypoint ${index + 1}`}
+                        <CircleMarker
+                          key={loc._id}
+                          center={[loc.latitude, loc.longitude]}
+                          radius={loc.isSOS ? 10 : 8}
+                          fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"}
+                          fillOpacity={0.9}
+                          color="white"
+                          weight={loc.isSOS ? 4 : 3}
+                        >
+                          <Tooltip permanent={false} direction="top" offset={[0, -5]}>
+                            <div className="text-xs font-mono">
+                              {loc.isSOS ? "🚨 SOS" : "📍"} {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
                             </div>
-                            <div className="text-sm font-medium">{loc.city || 'Unknown'}</div>
-                            {loc.address && (
-                              <div className="text-xs text-gray-600">{loc.address}</div>
-                            )}
-                            <div className="text-xs text-gray-500 mt-1">
-                              Lat: {loc.latitude.toFixed(6)}<br/>
-                              Lng: {loc.longitude.toFixed(6)}
+                          </Tooltip>
+                          <Popup>
+                            <div className="text-center min-w-[150px]">
+                              <div className={`font-bold mb-1 ${loc.isSOS ? "text-red-600" : "text-blue-600"}`}>
+                                {loc.isSOS ? "🚨 SOS Alert" : `📍 Waypoint ${index + 1}`}
+                              </div>
+                              <div className="text-sm font-medium">{loc.city || 'Unknown'}</div>
+                              {loc.address && (
+                                <div className="text-xs text-gray-600">{loc.address}</div>
+                              )}
+                              <div className="text-xs text-gray-500 mt-1">
+                                Lat: {loc.latitude.toFixed(6)}<br />
+                                Lng: {loc.longitude.toFixed(6)}
+                              </div>
+                              {loc.speed && (
+                                <div className="text-xs text-gray-500">Speed: {loc.speed} km/h</div>
+                              )}
+                              <div className="text-xs text-gray-500 mt-1">
+                                {formatTime(loc.recordedAt)}
+                              </div>
                             </div>
-                            {loc.speed && (
-                              <div className="text-xs text-gray-500">Speed: {loc.speed} km/h</div>
-                            )}
-                            <div className="text-xs text-gray-500 mt-1">
-                              {formatTime(loc.recordedAt)}
-                            </div>
-                          </div>
-                        </Popup>
-                      </CircleMarker>
-                    );
+                          </Popup>
+                        </CircleMarker>
+                      );
                     })}
 
                     {/* End Point Marker (Arrow/Destination) - Show only if more than 1 location */}
                     {locationHistory.length > 1 && mapFilters.showCurrent && (
-                      <Marker 
+                      <Marker
                         position={[
-                          locationHistory[locationHistory.length - 1].latitude, 
+                          locationHistory[locationHistory.length - 1].latitude,
                           locationHistory[locationHistory.length - 1].longitude
-                        ]} 
+                        ]}
                         icon={endIcon}
                       >
                         <Tooltip permanent={false} direction="top" offset={[0, -20]}>
@@ -826,7 +828,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                               </div>
                             )}
                             <div className="text-xs text-gray-500 mt-1">
-                              Lat: {locationHistory[locationHistory.length - 1].latitude.toFixed(6)}<br/>
+                              Lat: {locationHistory[locationHistory.length - 1].latitude.toFixed(6)}<br />
                               Lng: {locationHistory[locationHistory.length - 1].longitude.toFixed(6)}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
@@ -856,7 +858,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                               <div className="text-xs text-gray-600 mt-1">{device.location.address}</div>
                             )}
                             <div className="text-xs text-gray-500 mt-1">
-                              Lat: {lat.toFixed(6)}<br/>
+                              Lat: {lat.toFixed(6)}<br />
                               Lng: {lng.toFixed(6)}
                             </div>
                             {(hasBrowserLocation || hasLastKnownLocation) && !hasLocation && (
@@ -875,7 +877,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   <MapPin className="w-16 h-16 text-muted-foreground/30 mb-4" />
                   <p className="text-muted-foreground text-lg font-medium">No Location Data</p>
                   <p className="text-muted-foreground text-sm text-center px-4">
-                    {permissionStatus === 'denied' 
+                    {permissionStatus === 'denied'
                       ? 'Location permission denied. Please enable it in your browser settings.'
                       : permissionStatus === 'prompt'
                         ? 'Enable location to see your current position on the map.'
@@ -903,22 +905,22 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   onClick={() => setMapFilters(prev => ({ ...prev, showStart: !prev.showStart }))}
                   className={cn(
                     "flex items-center gap-1.5 px-2 py-1 rounded-full border transition-all",
-                    mapFilters.showStart 
-                      ? "bg-green-500/20 border-green-500/50 text-green-600" 
+                    mapFilters.showStart
+                      ? "bg-green-500/20 border-green-500/50 text-green-600"
                       : "bg-muted/30 border-border text-muted-foreground opacity-50"
                   )}
                 >
                   <div className="w-3 h-3 rounded-full bg-green-500 border border-white shadow-sm"></div>
                   <span className="text-xs">Start</span>
                 </button>
-                
+
                 {locationHistory.length > 2 && (
                   <button
                     onClick={() => setMapFilters(prev => ({ ...prev, showWaypoints: !prev.showWaypoints }))}
                     className={cn(
                       "flex items-center gap-1.5 px-2 py-1 rounded-full border transition-all",
-                      mapFilters.showWaypoints 
-                        ? "bg-blue-500/20 border-blue-500/50 text-blue-600" 
+                      mapFilters.showWaypoints
+                        ? "bg-blue-500/20 border-blue-500/50 text-blue-600"
                         : "bg-muted/30 border-border text-muted-foreground opacity-50"
                     )}
                   >
@@ -926,14 +928,14 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                     <span className="text-xs">Waypoints</span>
                   </button>
                 )}
-                
+
                 {locationHistory.some(loc => loc.isSOS) && (
                   <button
                     onClick={() => setMapFilters(prev => ({ ...prev, showSOS: !prev.showSOS }))}
                     className={cn(
                       "flex items-center gap-1.5 px-2 py-1 rounded-full border transition-all",
-                      mapFilters.showSOS 
-                        ? "bg-red-500/20 border-red-500/50 text-red-600" 
+                      mapFilters.showSOS
+                        ? "bg-red-500/20 border-red-500/50 text-red-600"
                         : "bg-muted/30 border-border text-muted-foreground opacity-50"
                     )}
                   >
@@ -941,26 +943,26 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                     <span className="text-xs">SOS</span>
                   </button>
                 )}
-                
+
                 <button
                   onClick={() => setMapFilters(prev => ({ ...prev, showCurrent: !prev.showCurrent }))}
                   className={cn(
                     "flex items-center gap-1.5 px-2 py-1 rounded-full border transition-all",
-                    mapFilters.showCurrent 
-                      ? "bg-red-500/20 border-red-500/50 text-red-600" 
+                    mapFilters.showCurrent
+                      ? "bg-red-500/20 border-red-500/50 text-red-600"
                       : "bg-muted/30 border-border text-muted-foreground opacity-50"
                   )}
                 >
                   <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[10px] border-l-transparent border-r-transparent border-b-red-500"></div>
                   <span className="text-xs">Current</span>
                 </button>
-                
+
                 <button
                   onClick={() => setMapFilters(prev => ({ ...prev, showRoute: !prev.showRoute }))}
                   className={cn(
                     "flex items-center gap-1.5 px-2 py-1 rounded-full border transition-all",
-                    mapFilters.showRoute 
-                      ? "bg-blue-500/20 border-blue-500/50 text-blue-600" 
+                    mapFilters.showRoute
+                      ? "bg-blue-500/20 border-blue-500/50 text-blue-600"
                       : "bg-muted/30 border-border text-muted-foreground opacity-50"
                   )}
                 >
@@ -983,18 +985,18 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                     const isCurrentLocation = index === 0;
                     const isStartLocation = index === locationHistory.length - 1;
                     const isSOS = loc.isSOS;
-                    
+
                     return (
-                      <div 
-                        key={loc._id} 
+                      <div
+                        key={loc._id}
                         className={cn(
                           "flex items-center justify-between p-2 rounded-lg text-sm",
-                          isSOS 
-                            ? "bg-red-500/20 border border-red-500/30" 
-                            : isCurrentLocation 
-                              ? "bg-red-500/10" 
-                              : isStartLocation 
-                                ? "bg-green-500/10" 
+                          isSOS
+                            ? "bg-red-500/20 border border-red-500/30"
+                            : isCurrentLocation
+                              ? "bg-red-500/10"
+                              : isStartLocation
+                                ? "bg-green-500/10"
                                 : "bg-background/50"
                         )}
                       >
@@ -1095,18 +1097,18 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                     const isCurrentLocation = index === 0;
                     const isStartLocation = index === locationHistory.length - 1;
                     const isSOS = loc.isSOS;
-                    
+
                     return (
-                      <div 
-                        key={loc._id} 
+                      <div
+                        key={loc._id}
                         className={cn(
                           "flex items-center justify-between p-3 rounded-xl border",
-                          isSOS 
-                            ? "bg-red-500/20 border-red-500/50" 
-                            : isCurrentLocation 
-                              ? "bg-red-500/10 border-red-500/30" 
-                              : isStartLocation 
-                                ? "bg-green-500/10 border-green-500/30" 
+                          isSOS
+                            ? "bg-red-500/20 border-red-500/50"
+                            : isCurrentLocation
+                              ? "bg-red-500/10 border-red-500/30"
+                              : isStartLocation
+                                ? "bg-green-500/10 border-green-500/30"
                                 : "bg-muted/30 border-border/50"
                         )}
                       >
@@ -1117,12 +1119,12 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className={cn("font-medium", isSOS && "text-red-600")}>
-                                {isSOS 
-                                  ? "SOS Alert Location" 
-                                  : isCurrentLocation 
-                                    ? "Current Location" 
-                                    : isStartLocation 
-                                      ? "Start Point" 
+                                {isSOS
+                                  ? "SOS Alert Location"
+                                  : isCurrentLocation
+                                    ? "Current Location"
+                                    : isStartLocation
+                                      ? "Start Point"
                                       : `Waypoint ${locationHistory.length - index - 1}`}
                               </p>
                               {isSOS && (
@@ -1169,7 +1171,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
           </TabsContent>
         </Tabs>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 };
 

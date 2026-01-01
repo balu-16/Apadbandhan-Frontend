@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { policeAPI, hospitalAPI } from "@/services/api";
-import { 
+import {
   Users,
   Search,
   Loader2,
@@ -58,9 +58,9 @@ const UsersReadOnlyPage = ({ portalType }: UsersReadOnlyPageProps) => {
 
   const filteredUsers = users.filter(user => {
     const searchLower = searchQuery.toLowerCase();
-    return user.fullName?.toLowerCase().includes(searchLower) || 
-           user.email?.toLowerCase().includes(searchLower) ||
-           user.phone?.includes(searchQuery);
+    return user.fullName?.toLowerCase().includes(searchLower) ||
+      user.email?.toLowerCase().includes(searchLower) ||
+      user.phone?.includes(searchQuery);
   });
 
   const formatDate = (dateString: string) => {
@@ -80,7 +80,10 @@ const UsersReadOnlyPage = ({ portalType }: UsersReadOnlyPageProps) => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className={`w-12 h-12 text-${color}-500 animate-spin`} />
+        <Loader2 className={cn(
+          "w-12 h-12 animate-spin",
+          portalType === 'police' ? "text-blue-500" : "text-red-500"
+        )} />
       </div>
     );
   }
@@ -128,7 +131,7 @@ const UsersReadOnlyPage = ({ portalType }: UsersReadOnlyPageProps) => {
       {filteredUsers.length > 0 ? (
         <div className="space-y-3">
           {filteredUsers.map((user) => (
-            <div 
+            <div
               key={user._id}
               className="bg-card border border-border/50 rounded-xl p-4"
             >

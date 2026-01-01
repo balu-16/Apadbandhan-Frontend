@@ -17,11 +17,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { policeAPI } from "@/services/api";
-import { 
-  User, 
-  Phone, 
-  Mail, 
+import { policeAPI, usersAPI } from "@/services/api";
+import {
+  User,
+  Phone,
+  Mail,
   Camera,
   Bell,
   MapPin,
@@ -64,20 +64,20 @@ const PoliceSettings = () => {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // On Duty status for location tracking
   const [onDuty, setOnDuty] = useState(false);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
-  
+
   // User Information
   const [userInfo, setUserInfo] = useState({
     fullName: "",
     email: "",
     phone: "",
   });
-  
+
   // Notification Preferences
   const [notifications, setNotifications] = useState({
     accidentAlerts: true,
@@ -166,7 +166,7 @@ const PoliceSettings = () => {
     if (onDuty && locationPermission === 'granted') {
       // Update immediately
       updateLocation();
-      
+
       // Then update every 30 seconds
       locationIntervalRef.current = setInterval(updateLocation, 30000);
     } else {
@@ -187,13 +187,13 @@ const PoliceSettings = () => {
             timeout: 10000,
           });
         });
-        
+
         setLocationPermission('granted');
-        
+
         // Save onDuty to database
         await policeAPI.updateProfile({ onDuty: true });
         setOnDuty(true);
-        
+
         toast({
           title: "Location Tracking Active",
           description: "Your location will be updated every 30 seconds when you move.",
@@ -240,60 +240,58 @@ const PoliceSettings = () => {
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user?.id) return;
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image under 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "Image size must be less than 5MB",
-        variant: "destructive",
-      });
-      return;
-    }
+      setIsUploadingPhoto(true);
+      try {
+        await policeAPI.uploadProfilePhoto(file);
 
-    setIsUploadingPhoto(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          setProfilePhoto(e.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+        // Update local preview
+        const timestamp = new Date().getTime(); // Bust cache
+        setProfilePhoto(`${policeAPI.getProfilePhotoUrl()}?t=${timestamp}`);
 
-      // Photo upload stored locally for now
-      toast({
-        title: "Photo Updated",
-        description: "Your profile photo has been updated.",
-      });
-    } catch (error: unknown) {
-      const err = error as AxiosErrorLike;
-      toast({
-        title: "Error",
-        description: "Failed to upload photo.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploadingPhoto(false);
+        toast({
+          title: "Photo Updated",
+          description: "Your profile photo has been updated successfully.",
+        });
+      } catch (error: unknown) {
+        const err = error as AxiosErrorLike;
+        toast({
+          title: "Error",
+          description: err.response?.data?.message || "Failed to upload photo.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUploadingPhoto(false);
+      }
     }
   };
 
   const handleSaveProfile = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingProfile(true);
     try {
-      // Profile updates stored locally for now
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await policeAPI.updateProfile({ fullName: userInfo.fullName });
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved.",
       });
+      refreshUser();
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: "Failed to update profile.",
+        description: err.response?.data?.message || "Failed to update profile.",
         variant: "destructive",
       });
     } finally {
@@ -303,11 +301,12 @@ const PoliceSettings = () => {
 
   const handleSaveNotifications = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingNotifications(true);
     try {
-      // Notification preferences stored locally for now
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Notification preferences are stored locally (no backend endpoint yet)
+      // Save to localStorage as a temporary solution
+      localStorage.setItem(`police_notifications_${user.id}`, JSON.stringify(notifications));
       toast({
         title: "Notification Settings Saved",
         description: "Your notification preferences have been updated.",
@@ -316,7 +315,7 @@ const PoliceSettings = () => {
       const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: "Failed to save notification settings.",
+        description: err.response?.data?.message || "Failed to save notification settings.",
         variant: "destructive",
       });
     } finally {
@@ -326,14 +325,14 @@ const PoliceSettings = () => {
 
   const handleDeleteAccount = async () => {
     if (!user?.id || deleteConfirmText !== "delete my account") return;
-    
+
     setIsDeleting(true);
     try {
-      // Account deletion - logout for now
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Deactivate the police user account
+      await policeAPI.updateProfile({ isActive: false });
       toast({
-        title: "Account Deleted",
-        description: "Your account has been permanently deleted.",
+        title: "Account Deactivated",
+        description: "Your account has been deactivated. Contact admin to reactivate.",
         variant: "destructive",
       });
       setIsDeleteDialogOpen(false);
@@ -343,7 +342,7 @@ const PoliceSettings = () => {
       const err = error as AxiosErrorLike;
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to delete account.",
+        description: err.response?.data?.message || "Failed to deactivate account.",
         variant: "destructive",
       });
       setIsDeleting(false);
@@ -373,7 +372,7 @@ const PoliceSettings = () => {
           <Radio className="w-5 h-5 text-blue-500" />
           Active Status
         </h2>
-        
+
         <div className="flex items-center justify-between p-4 bg-blue-500/10 rounded-xl border border-blue-500/30">
           <div className="flex items-center gap-3">
             <div className={cn(
@@ -388,7 +387,7 @@ const PoliceSettings = () => {
             <div>
               <p className="font-medium text-foreground">Are you on duty?</p>
               <p className="text-sm text-muted-foreground">
-                {onDuty 
+                {onDuty
                   ? "Your location is being tracked every 30 seconds"
                   : "Enable to share your location for emergency response"
                 }
@@ -414,19 +413,19 @@ const PoliceSettings = () => {
           <User className="w-5 h-5 text-primary" />
           User Information
         </h2>
-        
+
         <div className="flex flex-col md:flex-row gap-6">
           {/* Profile Photo */}
           <div className="flex flex-col items-center">
             <div className="relative mb-3">
-              <div 
+              <div
                 className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={handlePhotoClick}
               >
                 {profilePhoto ? (
-                  <img 
-                    src={profilePhoto} 
-                    alt="Profile" 
+                  <img
+                    src={profilePhoto}
+                    alt="Profile"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -440,7 +439,7 @@ const PoliceSettings = () => {
                   </div>
                 )}
               </div>
-              <button 
+              <button
                 onClick={handlePhotoClick}
                 disabled={isUploadingPhoto}
                 className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -457,7 +456,7 @@ const PoliceSettings = () => {
               className="hidden"
             />
           </div>
-          
+
           {/* Form Fields */}
           <div className="flex-1 space-y-4">
             <div>
@@ -472,7 +471,7 @@ const PoliceSettings = () => {
                 placeholder="Enter your full name"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
@@ -485,7 +484,7 @@ const PoliceSettings = () => {
                 placeholder="Enter your email"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Phone className="w-4 h-4 inline mr-2" />
@@ -506,9 +505,9 @@ const PoliceSettings = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-1">Phone number cannot be changed</p>
             </div>
-            
+
             <div className="pt-2">
-              <Button 
+              <Button
                 variant="outline"
                 onClick={handleSaveProfile}
                 disabled={isSavingProfile}
@@ -540,7 +539,7 @@ const PoliceSettings = () => {
         <p className="text-muted-foreground mb-4">
           Choose your preferred theme for the application
         </p>
-        
+
         <div className="grid grid-cols-3 gap-4">
           <div
             onClick={() => setTheme('light')}
@@ -613,7 +612,7 @@ const PoliceSettings = () => {
           <Bell className="w-5 h-5 text-primary" />
           Preferences & Notifications
         </h2>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
             <div className="flex items-center gap-3">
@@ -629,12 +628,12 @@ const PoliceSettings = () => {
             </div>
             <Switch
               checked={notifications.accidentAlerts}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setNotifications({ ...notifications, accidentAlerts: checked })
               }
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -649,12 +648,12 @@ const PoliceSettings = () => {
             </div>
             <Switch
               checked={notifications.smsNotifications}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setNotifications({ ...notifications, smsNotifications: checked })
               }
             />
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -669,15 +668,15 @@ const PoliceSettings = () => {
             </div>
             <Switch
               checked={notifications.locationTracking}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setNotifications({ ...notifications, locationTracking: checked })
               }
             />
           </div>
         </div>
-        
+
         <div className="mt-6 flex justify-end">
-          <Button 
+          <Button
             variant="outline"
             onClick={handleSaveNotifications}
             disabled={isSavingNotifications}
@@ -707,8 +706,8 @@ const PoliceSettings = () => {
         <p className="text-muted-foreground mb-6">
           Sign out from your account on this device.
         </p>
-        
-        <Button 
+
+        <Button
           variant="outline"
           onClick={() => {
             logout();
@@ -730,7 +729,7 @@ const PoliceSettings = () => {
         <p className="text-muted-foreground mb-6">
           Once you delete your account, there is no going back. All your data will be permanently removed.
         </p>
-        
+
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" className="gap-2">

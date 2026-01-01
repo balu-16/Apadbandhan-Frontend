@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { alertsAPI, sosAPI } from "@/services/api";
 import { toast } from "sonner";
-import { 
+import {
   Bell,
   AlertTriangle,
   CheckCircle,
@@ -167,7 +167,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
         {/* Header */}
         <div className={cn(
           "p-6 pb-4",
-          alert.source === 'sos' 
+          alert.source === 'sos'
             ? "bg-gradient-to-r from-purple-500/20 via-purple-500/10 to-transparent"
             : "bg-gradient-to-r from-orange-500/20 via-orange-500/10 to-transparent"
         )}>
@@ -175,7 +175,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
             <DialogTitle className="flex items-center gap-4">
               <div className={cn(
                 "w-16 h-16 rounded-2xl flex items-center justify-center ring-4",
-                alert.source === 'sos' 
+                alert.source === 'sos'
                   ? "bg-purple-500/20 ring-purple-500/10"
                   : "bg-orange-500/20 ring-orange-500/10"
               )}>
@@ -189,15 +189,15 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                 <h2 className="text-2xl font-bold">{alert.type || 'Emergency Alert'}</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className={cn(
-                    alert.source === 'sos' 
+                    alert.source === 'sos'
                       ? "bg-purple-500/20 text-purple-500 border-purple-500/30"
                       : "bg-orange-500/20 text-orange-500 border-orange-500/30"
                   )}>
                     {alert.source === 'sos' ? 'SOS Alert' : 'Accident Alert'}
                   </Badge>
                   <Badge className={cn(
-                    alert.status === 'resolved' 
-                      ? "bg-green-500/20 text-green-500" 
+                    alert.status === 'resolved'
+                      ? "bg-green-500/20 text-green-500"
                       : "bg-red-500/20 text-red-500"
                   )}>
                     {alert.status || 'pending'}
@@ -220,7 +220,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                 <Navigation className="w-4 h-4 text-red-500" />
                 Emergency Location
               </h3>
-              
+
               {/* Map */}
               <div className="rounded-xl overflow-hidden border border-border h-[200px] mb-3">
                 <MapContainer
@@ -233,7 +233,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  <CircleMarker 
+                  <CircleMarker
                     center={[alert.location!.latitude, alert.location!.longitude]}
                     radius={12}
                     fillColor="#ef4444"
@@ -268,10 +268,10 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                   <p className="font-medium">{alert.location.address}</p>
                 </div>
               )}
-              
+
               {/* Open in Maps Button */}
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full mt-3 gap-2"
                 onClick={() => window.open(`https://www.google.com/maps?q=${alert.location!.latitude},${alert.location!.longitude}`, '_blank')}
               >
@@ -288,7 +288,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                 <User className="w-4 h-4 text-primary" />
                 Victim Information
               </h3>
-              
+
               {/* User Header */}
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -456,7 +456,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                           </div>
                         </div>
                         <Badge variant="outline" className={cn(
-                          device.status === "online" 
+                          device.status === "online"
                             ? "bg-green-500/20 text-green-500 border-green-500/30"
                             : "bg-muted text-muted-foreground"
                         )}>
@@ -484,8 +484,8 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                   return (
                     <div className={cn(
                       "rounded-xl p-4 border-2",
-                      policeResponder 
-                        ? "bg-green-500/10 border-green-500/30" 
+                      policeResponder
+                        ? "bg-green-500/10 border-green-500/30"
                         : "bg-yellow-500/10 border-yellow-500/30"
                     )}>
                       <div className="flex items-center gap-3 mb-3">
@@ -502,8 +502,8 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                           <p className="font-semibold text-blue-600">Police</p>
                           <Badge className={cn(
                             "text-xs",
-                            policeResponder 
-                              ? "bg-green-500/20 text-green-600" 
+                            policeResponder
+                              ? "bg-green-500/20 text-green-600"
                               : "bg-yellow-500/20 text-yellow-600"
                           )}>
                             {policeResponder ? 'Responded' : 'Waiting'}
@@ -540,8 +540,8 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                   return (
                     <div className={cn(
                       "rounded-xl p-4 border-2",
-                      hospitalResponder 
-                        ? "bg-green-500/10 border-green-500/30" 
+                      hospitalResponder
+                        ? "bg-green-500/10 border-green-500/30"
                         : "bg-yellow-500/10 border-yellow-500/30"
                     )}>
                       <div className="flex items-center gap-3 mb-3">
@@ -558,8 +558,8 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                           <p className="font-semibold text-red-600">Hospital</p>
                           <Badge className={cn(
                             "text-xs",
-                            hospitalResponder 
-                              ? "bg-green-500/20 text-green-600" 
+                            hospitalResponder
+                              ? "bg-green-500/20 text-green-600"
                               : "bg-yellow-500/20 text-yellow-600"
                           )}>
                             {hospitalResponder ? 'Responded' : 'Waiting'}
@@ -590,7 +590,7 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                   );
                 })()}
               </div>
-              
+
               {/* Search radius info */}
               {alert.currentSearchRadius && alert.status !== 'resolved' && (
                 <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
@@ -614,8 +614,8 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-10 h-10 rounded-lg flex items-center justify-center",
-                        responder.role === 'hospital' 
-                          ? "bg-red-500/20" 
+                        responder.role === 'hospital'
+                          ? "bg-red-500/20"
                           : "bg-blue-500/20"
                       )}>
                         {responder.role === 'hospital' ? (
@@ -629,8 +629,8 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                           <p className="font-medium">{responder.name}</p>
                           <Badge variant="outline" className={cn(
                             "text-xs",
-                            responder.role === 'hospital' 
-                              ? "border-red-500/50 text-red-500 bg-red-500/10" 
+                            responder.role === 'hospital'
+                              ? "border-red-500/50 text-red-500 bg-red-500/10"
                               : "border-blue-500/50 text-blue-500 bg-blue-500/10"
                           )}>
                             {responder.role === 'hospital' ? 'Hospital' : 'Police'}
@@ -718,15 +718,58 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
     if (showRefresh) setIsRefreshing(true);
     else setIsLoading(true);
 
+
     try {
-      const [alertsResponse, statsResponse] = await Promise.all([
-        alertsAPI.getCombined(sourceFilter),
-        alertsAPI.getCombinedStats(),
-      ]);
-      setAlerts(Array.isArray(alertsResponse.data) ? alertsResponse.data : []);
-      setStats(statsResponse.data);
-    } catch (error: unknown) {
-      console.error("Failed to fetch alerts:", error);
+      let alertsRes, statsRes;
+
+      if (portalType === 'police') {
+        // Use police-specific APIs
+        const { policeAPI } = await import('@/services/api');
+        [alertsRes, statsRes] = await Promise.all([
+          policeAPI.getAllAlerts(),
+          policeAPI.getStats(),
+        ]);
+
+        // Adapt police stats to match AlertsPage expected shape
+        const policeStats = statsRes.data;
+        statsRes = {
+          data: {
+            total: policeStats.totalAlerts || 0,
+            pending: policeStats.pendingAlerts || 0,
+            resolved: policeStats.resolvedAlerts || 0,
+            alerts: { total: policeStats.totalAlerts || 0, pending: policeStats.pendingAlerts || 0, resolved: policeStats.resolvedAlerts || 0 },
+            sos: { total: 0, pending: 0, resolved: 0 } // Police stats don't separate SOS currently
+          }
+        };
+      } else if (portalType === 'hospital') {
+        const { hospitalAPI } = await import('@/services/api');
+        [alertsRes, statsRes] = await Promise.all([
+          hospitalAPI.getAllAlerts(),
+          hospitalAPI.getStats(),
+        ]);
+        // Adapt hospital stats if needed (assuming similar to police or alerts)
+        // For now using same adaptation as police for safety if structure matches
+        const hospStats = statsRes.data;
+        statsRes = {
+          data: {
+            total: hospStats.totalAlerts || hospStats.total || 0,
+            pending: hospStats.pendingAlerts || hospStats.pending || 0,
+            resolved: hospStats.resolvedAlerts || hospStats.resolved || 0,
+            alerts: { total: 0, pending: 0, resolved: 0 },
+            sos: { total: 0, pending: 0, resolved: 0 }
+          }
+        };
+      } else {
+        // Admin / SuperAdmin uses generic combined API
+        [alertsRes, statsRes] = await Promise.all([
+          alertsAPI.getCombined(sourceFilter),
+          alertsAPI.getCombinedStats(),
+        ]);
+      }
+
+      setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+      setStats(statsRes.data);
+    } catch {
       setAlerts([]);
     } finally {
       setIsLoading(false);
@@ -754,8 +797,9 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
       await sosAPI.respond(alert._id);
       toast.success("Successfully responded to alert! The user has been notified.");
       fetchAlerts(true);
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Failed to respond to alert";
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const message = (error as any).response?.data?.message || "Failed to respond to alert";
       toast.error(message);
     } finally {
       setRespondingToId(null);
@@ -774,15 +818,16 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
 
   const handleConfirmDelete = async () => {
     if (!alertToDelete) return;
-    
+
     setDeletingId(alertToDelete._id);
     try {
       const source = alertToDelete.source || 'alert';
       await alertsAPI.delete(alertToDelete._id, source);
       toast.success(`${source === 'sos' ? 'SOS alert' : 'Alert'} deleted successfully`);
       fetchAlerts(true);
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Failed to delete alert";
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const message = (error as any).response?.data?.message || "Failed to delete alert";
       toast.error(message);
     } finally {
       setDeletingId(null);
@@ -795,8 +840,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
     const searchLower = searchQuery.toLowerCase();
     const userName = alert.userId?.fullName || alert.userId?.name || '';
     const alertType = alert.type || '';
-    return userName.toLowerCase().includes(searchLower) || 
-           alertType.toLowerCase().includes(searchLower);
+    return userName.toLowerCase().includes(searchLower) ||
+      alertType.toLowerCase().includes(searchLower);
   });
 
   const getFilterLabel = () => {
@@ -846,21 +891,21 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setSourceFilter('all')}
                 className={cn(sourceFilter === 'all' && "bg-accent")}
               >
                 <Bell className="w-4 h-4 mr-2" />
                 All Alerts
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setSourceFilter('alert')}
                 className={cn(sourceFilter === 'alert' && "bg-accent")}
               >
                 <Car className="w-4 h-4 mr-2" />
                 Accident Alerts
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setSourceFilter('sos')}
                 className={cn(sourceFilter === 'sos' && "bg-accent")}
               >
@@ -926,7 +971,7 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
       {filteredAlerts.length > 0 ? (
         <div className="space-y-3">
           {filteredAlerts.map((alert) => (
-            <div 
+            <div
               key={alert._id}
               className="bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 transition-all"
             >
@@ -934,10 +979,10 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center",
-                    alert.source === 'sos' 
-                      ? "bg-purple-500/20" 
-                      : alert.status === 'resolved' 
-                        ? "bg-green-500/20" 
+                    alert.source === 'sos'
+                      ? "bg-purple-500/20"
+                      : alert.status === 'resolved'
+                        ? "bg-green-500/20"
                         : "bg-orange-500/20"
                   )}>
                     {alert.source === 'sos' ? (
@@ -953,8 +998,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                       <p className="font-semibold">{alert.type || 'Alert'}</p>
                       <Badge variant="outline" className={cn(
                         "text-xs",
-                        alert.source === 'sos' 
-                          ? "border-purple-500/50 text-purple-500" 
+                        alert.source === 'sos'
+                          ? "border-purple-500/50 text-purple-500"
                           : "border-orange-500/50 text-orange-500"
                       )}>
                         {alert.source === 'sos' ? 'SOS' : 'Accident'}
@@ -984,8 +1029,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                     </div>
                   )}
                   <Badge className={cn(
-                    alert.status === 'resolved' 
-                      ? "bg-green-500/20 text-green-500" 
+                    alert.status === 'resolved'
+                      ? "bg-green-500/20 text-green-500"
                       : alert.status === 'responding'
                         ? "bg-blue-500/20 text-blue-500"
                         : "bg-red-500/20 text-red-500"
@@ -1001,8 +1046,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                       disabled={respondingToId === alert._id || hasUserResponded(alert)}
                       className={cn(
                         "gap-1",
-                        hasUserResponded(alert) 
-                          ? "bg-green-500/20 text-green-600 hover:bg-green-500/30" 
+                        hasUserResponded(alert)
+                          ? "bg-green-500/20 text-green-600 hover:bg-green-500/30"
                           : "bg-green-600 hover:bg-green-700 text-white"
                       )}
                     >
@@ -1070,7 +1115,7 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Alert</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this {alertToDelete?.source === 'sos' ? 'SOS alert' : 'alert'}? 
+              Are you sure you want to delete this {alertToDelete?.source === 'sos' ? 'SOS alert' : 'alert'}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

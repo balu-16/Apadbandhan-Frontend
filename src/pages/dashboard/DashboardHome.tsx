@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { 
-  Smartphone, 
-  Bell, 
-  MapPin, 
-  FileText, 
+import {
+  Smartphone,
+  Bell,
+  MapPin,
+  FileText,
   Shield,
   Activity,
   TrendingUp,
@@ -35,7 +35,7 @@ interface StatCardProps {
 }
 
 const StatCard = ({ icon: Icon, title, value, description, delay, trend, isLoading }: StatCardProps) => (
-  <div 
+  <div
     className="bg-card border border-border/50 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300 group animate-fade-up opacity-0"
     style={{ animationDelay: delay, animationFillMode: "forwards" }}
   >
@@ -95,26 +95,26 @@ const DashboardHome = () => {
           setIsLoading(false);
           return;
         }
-        
+
         // Fetch devices
         const devicesResponse = await devicesAPI.getAll();
         const devices: Device[] = devicesResponse.data || [];
-        
+
         // Fetch alert stats
         let alertStats = { total: 0 };
         try {
-          const alertsResponse = await alertsAPI.getStats();
+          const alertsResponse = await alertsAPI.getCombinedStats();
           alertStats = alertsResponse.data;
         } catch (e) {
           // Alerts API might not be ready
           console.log('Could not fetch alerts stats');
         }
-        
+
         // Check if any device has insurance
-        const hasInsurance = devices.some((d: Device) => 
+        const hasInsurance = devices.some((d: Device) =>
           d.healthInsurance || d.vehicleInsurance || d.termInsurance
         );
-        
+
         setStats({
           deviceCount: devices.length,
           onlineDevices: devices.filter((d: Device) => d.status === 'online').length,
@@ -143,30 +143,30 @@ const DashboardHome = () => {
           {/* Background decorations */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-2xl" />
-          
+
           <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
                 <Activity className="w-4 h-4 animate-pulse" />
                 System Active
               </div>
-              
+
               <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
                 Welcome to <span className="text-gradient-orange">Apadbandhav</span>
               </h1>
-              
+
               <p className="text-lg text-muted-foreground max-w-xl">
-                Real-time accident detection using AIoT sensors. Monitor your devices, 
+                Real-time accident detection using AIoT sensors. Monitor your devices,
                 manage emergency contacts, and stay protected on every journey.
               </p>
             </div>
-            
+
             {/* Hero Illustration */}
             <div className="relative">
               <div className="w-64 h-64 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center animate-float">
                 <Shield className="w-32 h-32 text-primary/50" />
               </div>
-              
+
               {/* Floating elements */}
               <div className="absolute -top-4 -right-4 w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center animate-float" style={{ animationDelay: "0.5s" }}>
                 <AlertTriangle className="w-8 h-8 text-primary" />
@@ -184,7 +184,7 @@ const DashboardHome = () => {
         <h2 className="text-2xl font-bold text-foreground mb-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
           Dashboard Overview
         </h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             icon={Smartphone}
@@ -227,10 +227,10 @@ const DashboardHome = () => {
         <h2 className="text-2xl font-bold text-foreground mb-6">
           Quick Actions
         </h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link 
-            to="/dashboard/add-device" 
+          <Link
+            to="/dashboard/add-device"
             className="group bg-card border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-glow"
           >
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
@@ -243,9 +243,9 @@ const DashboardHome = () => {
               Scan QR code to register a new AIoT device
             </p>
           </Link>
-          
-          <Link 
-            to="/dashboard/devices" 
+
+          <Link
+            to="/dashboard/devices"
             className="group bg-card border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-glow"
           >
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
@@ -258,9 +258,9 @@ const DashboardHome = () => {
               Monitor all connected devices and locations
             </p>
           </Link>
-          
-          <Link 
-            to="/dashboard/settings" 
+
+          <Link
+            to="/dashboard/settings"
             className="group bg-card border border-border/50 rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 hover:shadow-glow"
           >
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">

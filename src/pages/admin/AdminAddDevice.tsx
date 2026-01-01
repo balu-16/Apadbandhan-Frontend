@@ -10,9 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  PlusCircle, 
-  Smartphone, 
+import {
+  PlusCircle,
+  Smartphone,
   User,
   Loader2,
   QrCode
@@ -43,7 +43,7 @@ const AdminAddDevice = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Form fields
   const [formData, setFormData] = useState({
     name: "",
@@ -61,8 +61,7 @@ const AdminAddDevice = () => {
     try {
       const response = await adminAPI.getAllUsers();
       setUsers(response.data);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch users",
@@ -104,7 +103,7 @@ const AdminAddDevice = () => {
         code: formData.code,
         type: formData.type,
       });
-      
+
       toast({
         title: "Success",
         description: "Device added successfully",

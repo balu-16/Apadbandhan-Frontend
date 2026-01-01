@@ -167,22 +167,22 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
   // Calculate location values
   const hasLocation = !isQrCode && regDevice?.location?.latitude && regDevice?.location?.longitude;
   const hasLocationHistory = locationHistory.length > 0;
-  
-  const lat = hasLocationHistory 
-    ? locationHistory[locationHistory.length - 1].latitude 
+
+  const lat = hasLocationHistory
+    ? locationHistory[locationHistory.length - 1].latitude
     : (regDevice?.location?.latitude || 20.5937);
-  const lng = hasLocationHistory 
-    ? locationHistory[locationHistory.length - 1].longitude 
+  const lng = hasLocationHistory
+    ? locationHistory[locationHistory.length - 1].longitude
     : (regDevice?.location?.longitude || 78.9629);
 
   // Route coordinates for polyline
-  const routeCoordinates: [number, number][] = useMemo(() => 
+  const routeCoordinates: [number, number][] = useMemo(() =>
     locationHistory.map(loc => [loc.latitude, loc.longitude]),
     [locationHistory]
   );
 
   // Map key to force re-render when locations change
-  const mapKey = useMemo(() => 
+  const mapKey = useMemo(() =>
     `admin-map-${locationHistory.length}-${lat}-${lng}`,
     [locationHistory.length, lat, lng]
   );
@@ -193,15 +193,15 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
     if (isQrCode) return null;
     const id = regDevice._id || regDevice.id;
     if (!id) return null;
-    
+
     if (typeof id === 'object' && id !== null && '$oid' in id) {
       return (id as { $oid: string }).$oid;
     }
-    
+
     if (typeof id === 'object' && typeof (id as { toString: () => string }).toString === 'function') {
       return (id as { toString: () => string }).toString();
     }
-    
+
     return String(id);
   }, [device, isQrCode, regDevice]);
 
@@ -215,12 +215,12 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
     } else {
       setIsRefreshing(true);
     }
-    
+
     try {
       const response = await deviceLocationsAPI.getByDevice(deviceId);
-      
+
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) => 
+        const sortedLocations = response.data.sort((a: LocationHistory, b: LocationHistory) =>
           new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
         );
         setLocationHistory(sortedLocations);
@@ -230,7 +230,6 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
       setLastRefreshTime(new Date());
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
-      console.error('Failed to fetch location history:', err.response?.data || err.message);
       if (isInitialLoad) {
         setLocationHistory([]);
       }
@@ -251,8 +250,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
       } else {
         setQrCodeUrl(null);
       }
-    } catch (error) {
-      console.error("Failed to fetch QR code:", error);
+    } catch {
       setQrCodeUrl(null);
     } finally {
       setIsLoadingQr(false);
@@ -589,7 +587,7 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                           </div>
                           <div className="flex-1">
                             <p className="font-semibold text-sm">
-                              {typeof regDevice.userId === 'object' 
+                              {typeof regDevice.userId === 'object'
                                 ? (regDevice.userId.fullName || 'Unknown User')
                                 : 'User ID: ' + regDevice.userId}
                             </p>
@@ -685,13 +683,13 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                         </Marker>
                       )}
                       {locationHistory.length > 2 && locationHistory.slice(1, -1).map((loc) => (
-                        <CircleMarker 
-                          key={loc._id} 
-                          center={[loc.latitude, loc.longitude]} 
-                          radius={loc.isSOS ? 8 : 6} 
-                          fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"} 
-                          fillOpacity={0.9} 
-                          color="white" 
+                        <CircleMarker
+                          key={loc._id}
+                          center={[loc.latitude, loc.longitude]}
+                          radius={loc.isSOS ? 8 : 6}
+                          fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"}
+                          fillOpacity={0.9}
+                          color="white"
                           weight={loc.isSOS ? 3 : 2}
                         >
                           {loc.isSOS && <Tooltip direction="top">🚨 SOS</Tooltip>}
@@ -739,13 +737,13 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                 ) : locationHistory.length > 0 ? (
                   <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2">
                     {[...locationHistory].reverse().map((loc, index) => (
-                      <div 
-                        key={loc._id} 
+                      <div
+                        key={loc._id}
                         className={cn(
                           "flex items-center justify-between p-3 rounded-lg text-sm",
-                          index === 0 ? "bg-red-500/10 border border-red-500/20" : 
-                          index === locationHistory.length - 1 ? "bg-green-500/10 border border-green-500/20" : 
-                          "bg-muted/30"
+                          index === 0 ? "bg-red-500/10 border border-red-500/20" :
+                            index === locationHistory.length - 1 ? "bg-green-500/10 border border-green-500/20" :
+                              "bg-muted/30"
                         )}
                       >
                         <div className="flex items-center gap-3">

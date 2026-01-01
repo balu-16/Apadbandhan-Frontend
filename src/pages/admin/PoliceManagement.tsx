@@ -19,10 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  Shield, 
-  Plus, 
-  Trash2, 
+import {
+  Shield,
+  Plus,
+  Trash2,
   Search,
   Loader2,
   Mail,
@@ -30,7 +30,8 @@ import {
   Calendar,
   MapPin,
   BadgeCheck,
-  Building
+  Building,
+  Pencil
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,6 +57,10 @@ interface PoliceUser {
   role: string;
   isActive: boolean;
   createdAt: string;
+  stationName?: string;
+  badgeNumber?: string;
+  jurisdiction?: string;
+  address?: string;
 }
 
 const PoliceManagement = () => {
@@ -63,10 +68,20 @@ const PoliceManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedPolice, setSelectedPolice] = useState<PoliceUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
+  const [editPolice, setEditPolice] = useState({
+    fullName: "",
+    email: "",
+    stationName: "",
+    badgeNumber: "",
+    jurisdiction: "",
+    address: "",
+  });
+
   const [newPolice, setNewPolice] = useState({
     fullName: "",
     email: "",
@@ -83,8 +98,7 @@ const PoliceManagement = () => {
     try {
       const response = await adminAPI.getAllPoliceUsers();
       setPoliceUsers(response.data);
-    } catch (error) {
-      console.error("Failed to fetch police users:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch police accounts",
@@ -125,10 +139,10 @@ const PoliceManagement = () => {
         description: "Police account created successfully",
       });
       setIsAddDialogOpen(false);
-      setNewPolice({ 
-        fullName: "", email: "", phone: "", 
-        stationName: "", badgeNumber: "", 
-        jurisdiction: "", address: "" 
+      setNewPolice({
+        fullName: "", email: "", phone: "",
+        stationName: "", badgeNumber: "",
+        jurisdiction: "", address: ""
       });
       fetchPoliceUsers();
     } catch (error: unknown) {
@@ -168,6 +182,58 @@ const PoliceManagement = () => {
     }
   };
 
+  const handleEditPolice = async () => {
+    if (!selectedPolice || !editPolice.fullName) {
+      toast({
+        title: "Error",
+        description: "Please fill in required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await adminAPI.updatePoliceUser(selectedPolice._id || selectedPolice.id, {
+        fullName: editPolice.fullName,
+        email: editPolice.email,
+        stationName: editPolice.stationName || undefined,
+        badgeNumber: editPolice.badgeNumber || undefined,
+        jurisdiction: editPolice.jurisdiction || undefined,
+        address: editPolice.address || undefined,
+      });
+      toast({
+        title: "Success",
+        description: "Police account updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedPolice(null);
+      fetchPoliceUsers();
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to update police account",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openEditDialog = (police: PoliceUser) => {
+    setSelectedPolice(police);
+    setEditPolice({
+      fullName: police.fullName || "",
+      email: police.email || "",
+      stationName: police.stationName || "",
+      badgeNumber: police.badgeNumber || "",
+      jurisdiction: police.jurisdiction || "",
+      address: police.address || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
   const filteredPolice = policeUsers.filter(
     (police) =>
       police.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -203,7 +269,7 @@ const PoliceManagement = () => {
             Manage police accounts ({policeUsers.length} total)
           </p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -383,17 +449,27 @@ const PoliceManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            setSelectedPolice(police);
-                            setIsDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary"
+                            onClick={() => openEditDialog(police)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              setSelectedPolice(police);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -404,12 +480,90 @@ const PoliceManagement = () => {
         </CardContent>
       </Card>
 
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-500" />
+              Edit Police Account
+            </DialogTitle>
+            <DialogDescription>
+              Update the details for {selectedPolice?.fullName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-fullName">Full Name *</Label>
+              <Input
+                id="edit-fullName"
+                value={editPolice.fullName}
+                onChange={(e) => setEditPolice({ ...editPolice, fullName: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editPolice.email}
+                onChange={(e) => setEditPolice({ ...editPolice, email: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-stationName">Station Name</Label>
+                <Input
+                  id="edit-stationName"
+                  value={editPolice.stationName}
+                  onChange={(e) => setEditPolice({ ...editPolice, stationName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-badgeNumber">Badge Number</Label>
+                <Input
+                  id="edit-badgeNumber"
+                  value={editPolice.badgeNumber}
+                  onChange={(e) => setEditPolice({ ...editPolice, badgeNumber: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-jurisdiction">Jurisdiction</Label>
+              <Input
+                id="edit-jurisdiction"
+                value={editPolice.jurisdiction}
+                onChange={(e) => setEditPolice({ ...editPolice, jurisdiction: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-address">Address</Label>
+              <Textarea
+                id="edit-address"
+                value={editPolice.address}
+                onChange={(e) => setEditPolice({ ...editPolice, address: e.target.value })}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditPolice} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Police Account</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the police account for "{selectedPolice?.fullName}"? 
+              Are you sure you want to delete the police account for "{selectedPolice?.fullName}"?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -417,17 +571,17 @@ const PoliceManagement = () => {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeletePolice}
               disabled={isSubmitting}
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </DialogContent >
+      </Dialog >
+    </div >
   );
 };
 

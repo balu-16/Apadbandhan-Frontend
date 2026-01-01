@@ -16,11 +16,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { systemConfigAPI } from "@/services/api";
-import { 
-  User, 
-  Phone, 
-  Mail, 
+import { systemConfigAPI, usersAPI } from "@/services/api";
+import {
+  User,
+  Phone,
+  Mail,
   Camera,
   Bell,
   MapPin,
@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils";
 const AdminSettings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, logout, isSuperAdmin } = useAuth();
+  const { user, logout, isSuperAdmin, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,20 +54,20 @@ const AdminSettings = () => {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // System Config state (superadmin only)
   const [maxPoliceAlerts, setMaxPoliceAlerts] = useState<string>('5');
   const [maxHospitalAlerts, setMaxHospitalAlerts] = useState<string>('5');
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
-  
+
   // User Information
   const [userInfo, setUserInfo] = useState({
     fullName: "",
     email: "",
     phone: "",
   });
-  
+
   // Notification Preferences
   const [notifications, setNotifications] = useState({
     accidentAlerts: true,
@@ -103,8 +103,7 @@ const AdminSettings = () => {
       const config = response.data;
       setMaxPoliceAlerts(String(config.maxPoliceAlertRecipients || 5));
       setMaxHospitalAlerts(String(config.maxHospitalAlertRecipients || 5));
-    } catch (error) {
-      console.error('Failed to load system config:', error);
+    } catch {
       setMaxPoliceAlerts('5');
       setMaxHospitalAlerts('5');
     } finally {
@@ -132,8 +131,7 @@ const AdminSettings = () => {
         maxHospitalAlertRecipients: hospitalLimit,
       });
       toast({ title: "Success", description: "Alert configuration saved successfully" });
-    } catch (error: unknown) {
-      console.error('Failed to save config:', error);
+    } catch {
       toast({ title: "Error", description: "Failed to save configuration", variant: "destructive" });
     } finally {
       setIsSavingConfig(false);
@@ -159,6 +157,7 @@ const AdminSettings = () => {
 
     setIsUploadingPhoto(true);
     try {
+      // Preview the image locally first
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -166,6 +165,10 @@ const AdminSettings = () => {
         }
       };
       reader.readAsDataURL(file);
+
+      // Upload to server
+      await usersAPI.uploadProfilePhoto(user.id, file);
+      await refreshUser();
 
       toast({
         title: "Photo Updated",
@@ -184,10 +187,14 @@ const AdminSettings = () => {
 
   const handleSaveProfile = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingProfile(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await usersAPI.updateProfile(user.id, {
+        fullName: userInfo.fullName,
+        email: userInfo.email,
+      });
+      await refreshUser();
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved.",
@@ -205,10 +212,15 @@ const AdminSettings = () => {
 
   const handleSaveNotifications = async () => {
     if (!user?.id) return;
-    
+
     setIsSavingNotifications(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await usersAPI.updateProfile(user.id, {
+        accidentAlerts: notifications.accidentAlerts,
+        smsNotifications: notifications.smsNotifications,
+        locationTracking: notifications.locationTracking,
+      });
+      await refreshUser();
       toast({
         title: "Notification Settings Saved",
         description: "Your notification preferences have been updated.",
@@ -226,10 +238,10 @@ const AdminSettings = () => {
 
   const handleDeleteAccount = async () => {
     if (!user?.id || deleteConfirmText !== "delete my account") return;
-    
+
     setIsDeleting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await usersAPI.deleteAccount(user.id);
       toast({
         title: "Account Deleted",
         description: "Your account has been permanently deleted.",
@@ -271,11 +283,11 @@ const AdminSettings = () => {
           <User className="w-5 h-5 text-primary" />
           User Information
         </h2>
-        
+
         <div className="flex flex-col md:flex-row gap-6">
           <div className="flex flex-col items-center">
             <div className="relative mb-3">
-              <div 
+              <div
                 className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={handlePhotoClick}
               >
@@ -292,7 +304,7 @@ const AdminSettings = () => {
                   </div>
                 )}
               </div>
-              <button 
+              <button
                 onClick={handlePhotoClick}
                 disabled={isUploadingPhoto}
                 className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -309,7 +321,7 @@ const AdminSettings = () => {
               className="hidden"
             />
           </div>
-          
+
           <div className="flex-1 space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -323,7 +335,7 @@ const AdminSettings = () => {
                 placeholder="Enter your full name"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
@@ -336,7 +348,7 @@ const AdminSettings = () => {
                 placeholder="Enter your email"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Phone className="w-4 h-4 inline mr-2" />
@@ -356,9 +368,9 @@ const AdminSettings = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-1">Phone number cannot be changed</p>
             </div>
-            
+
             <div className="pt-2">
-              <Button 
+              <Button
                 variant="outline"
                 onClick={handleSaveProfile}
                 disabled={isSavingProfile}
@@ -385,7 +397,7 @@ const AdminSettings = () => {
           <p className="text-muted-foreground mb-6">
             Configure the maximum number of responders to alert during SOS events. Only the nearest responders within these limits will receive alerts.
           </p>
-          
+
           {isLoadingConfig ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -412,7 +424,7 @@ const AdminSettings = () => {
                     placeholder="5"
                   />
                 </div>
-                
+
                 <div className="p-4 bg-muted/30 rounded-xl">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
@@ -433,9 +445,9 @@ const AdminSettings = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={handleSaveAlertConfig}
                   disabled={isSavingConfig}
@@ -460,7 +472,7 @@ const AdminSettings = () => {
           Appearance
         </h2>
         <p className="text-muted-foreground mb-4">Choose your preferred theme</p>
-        
+
         <div className="grid grid-cols-3 gap-4">
           {[
             { key: 'light', icon: Sun, label: 'Light', desc: 'Bright & clean' },
@@ -493,7 +505,7 @@ const AdminSettings = () => {
           <Bell className="w-5 h-5 text-primary" />
           Preferences & Notifications
         </h2>
-        
+
         <div className="space-y-4">
           {[
             { key: 'accidentAlerts', icon: AlertTriangle, label: 'Accident Alerts', desc: 'Receive notifications for detected accidents' },
@@ -517,7 +529,7 @@ const AdminSettings = () => {
             </div>
           ))}
         </div>
-        
+
         <div className="mt-6 flex justify-end">
           <Button variant="outline" onClick={handleSaveNotifications} disabled={isSavingNotifications} className="gap-2">
             {isSavingNotifications ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Notifications</>}
@@ -544,7 +556,7 @@ const AdminSettings = () => {
           Danger Zone
         </h2>
         <p className="text-muted-foreground mb-6">Once you delete your account, there is no going back.</p>
-        
+
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" className="gap-2">

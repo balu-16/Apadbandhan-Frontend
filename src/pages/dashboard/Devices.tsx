@@ -13,7 +13,6 @@ import {
   Loader2,
   RefreshCw,
   Trash2,
-  Power,
   AlertTriangle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -75,7 +74,7 @@ interface Device {
   name: string;
   code: string;
   type: string;
-  status: "online" | "offline";
+  status: "online" | "offline" | "maintenance";
   location?: Location;
   emergencyContacts?: EmergencyContact[];
   insurance?: Insurance;
@@ -235,7 +234,7 @@ const Devices = () => {
     try {
       await devicesAPI.updateStatus(device._id, newStatus);
       setDevices(prev => prev.map(d =>
-        d._id === device._id ? { ...d, status: newStatus as "online" | "offline" } : d
+        d._id === device._id ? { ...d, status: newStatus as "online" | "offline" | "maintenance" } : d
       ));
       toast({
         title: "Status Updated",
@@ -287,7 +286,7 @@ const Devices = () => {
       const respondersFound = sosResponse.data?.responders?.totalFound || 0;
       toast({
         title: "🚨 SOS Triggered",
-        description: respondersFound > 0 
+        description: respondersFound > 0
           ? `Emergency alert sent! ${respondersFound} responders notified.`
           : `Emergency location recorded for ${device.name}. Searching for responders...`,
       });

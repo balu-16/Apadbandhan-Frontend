@@ -19,10 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  UserCog, 
-  Plus, 
-  Trash2, 
+import {
+  UserCog,
+  Plus,
+  Trash2,
   Search,
   Loader2,
   Mail,
@@ -63,11 +63,11 @@ const AdminsManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Admin details modal state
   const [viewAdmin, setViewAdmin] = useState<Admin | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  
+
   // Form fields
   const [newAdmin, setNewAdmin] = useState({
     fullName: "",
@@ -82,8 +82,7 @@ const AdminsManagement = () => {
     try {
       const response = await adminAPI.getAllAdmins();
       setAdmins(response.data);
-    } catch (error) {
-      console.error("Failed to fetch admins:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch admins",
@@ -240,8 +239,8 @@ const AdminsManagement = () => {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleAddAdmin} 
+              <Button
+                onClick={handleAddAdmin}
                 disabled={isSubmitting}
                 className="bg-orange-500 hover:bg-orange-600"
               >
@@ -303,7 +302,7 @@ const AdminsManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredAdmins.map((admin) => (
-                    <TableRow 
+                    <TableRow
                       key={admin._id || admin.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => {
@@ -341,11 +340,10 @@ const AdminsManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          admin.isActive 
-                            ? 'bg-green-500/20 text-green-500' 
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${admin.isActive
+                            ? 'bg-green-500/20 text-green-500'
                             : 'bg-red-500/20 text-red-500'
-                        }`}>
+                          }`}>
                           {admin.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </TableCell>
@@ -378,7 +376,7 @@ const AdminsManagement = () => {
           <DialogHeader>
             <DialogTitle>Delete Admin</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{selectedAdmin?.fullName}</strong>? 
+              Are you sure you want to delete <strong>{selectedAdmin?.fullName}</strong>?
               This admin will lose all access to the system. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -386,8 +384,8 @@ const AdminsManagement = () => {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteAdmin}
               disabled={isSubmitting}
             >
