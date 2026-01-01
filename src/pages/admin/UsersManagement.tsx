@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useUsers, useCreateUser, useDeleteUser, User } from "@/hooks/useUsers";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +46,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import UserDetailsModal from "@/components/admin/UserDetailsModal";
@@ -58,25 +60,15 @@ interface AxiosErrorLike {
   message?: string;
 }
 
-interface User {
-  _id: string;
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
 const UsersManagement = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // User details modal state
   const [viewUser, setViewUser] = useState<User | null>(null);
@@ -96,25 +88,46 @@ const UsersManagement = () => {
   const { toast } = useToast();
   const { isSuperAdmin } = useAuth();
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      // Fetch only users with role='user'
-      const response = await adminAPI.getAllUsers('user');
-      setUsers(response.data);
-    } catch {
+  // React Query hooks for data fetching and mutations
+  const { 
+    data: usersData, 
+    isLoading, 
+    isFetching,
+    error: fetchError 
+  } = useUsers({
+    role: 'user',
+    page,
+    limit: 10,
+    search: debouncedSearchTerm || undefined,
+  });
+
+  const createUserMutation = useCreateUser();
+  const deleteUserMutation = useDeleteUser();
+
+  // Extract data from query result
+  const users = usersData?.data || [];
+  const totalPages = usersData?.meta.totalPages || 1;
+  const totalItems = usersData?.meta.total || 0;
+
+  // Show error toast if fetch fails
+  useEffect(() => {
+    if (fetchError) {
       toast({
         title: "Error",
         description: "Failed to fetch users",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
-  }, [toast]);
+  }, [fetchError, toast]);
 
+  // Reset to page 1 when search changes
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    setPage(1);
+  }, [debouncedSearchTerm]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
   const handleAddUser = async () => {
     if (!newUser.fullName || !newUser.email || !newUser.phone) {
@@ -131,9 +144,8 @@ const UsersManagement = () => {
       ec => ec.name && ec.phone
     );
 
-    setIsSubmitting(true);
-    try {
-      await adminAPI.createUser({
+    createUserMutation.mutate(
+      {
         fullName: newUser.fullName,
         email: newUser.email,
         phone: newUser.phone,
@@ -144,28 +156,30 @@ const UsersManagement = () => {
           ? newUser.medicalConditions.split(',').map(c => c.trim()).filter(Boolean)
           : undefined,
         emergencyContacts: validEmergencyContacts.length > 0 ? validEmergencyContacts : undefined,
-      });
-      toast({
-        title: "Success",
-        description: "User created successfully",
-      });
-      setIsAddDialogOpen(false);
-      setNewUser({
-        fullName: "", email: "", phone: "",
-        bloodGroup: "", address: "", medicalConditions: "",
-        emergencyContacts: [{ name: "", phone: "", relation: "" }]
-      });
-      fetchUsers();
-    } catch (error: unknown) {
-      const err = error as AxiosErrorLike;
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to create user",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Success",
+            description: "User created successfully",
+          });
+          setIsAddDialogOpen(false);
+          setNewUser({
+            fullName: "", email: "", phone: "",
+            bloodGroup: "", address: "", medicalConditions: "",
+            emergencyContacts: [{ name: "", phone: "", relation: "" }]
+          });
+        },
+        onError: (error: unknown) => {
+          const err = error as AxiosErrorLike;
+          toast({
+            title: "Error",
+            description: err.response?.data?.message || "Failed to create user",
+            variant: "destructive",
+          });
+        },
+      }
+    );
   };
 
   const addEmergencyContact = () => {
@@ -191,33 +205,28 @@ const UsersManagement = () => {
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
 
-    setIsSubmitting(true);
-    try {
-      await adminAPI.deleteUser(selectedUser._id || selectedUser.id);
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
-      setIsDeleteDialogOpen(false);
-      setSelectedUser(null);
-      fetchUsers();
-    } catch (error: unknown) {
-      const err = error as AxiosErrorLike;
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || "Failed to delete user",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    deleteUserMutation.mutate(selectedUser._id || selectedUser.id, {
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: "User deleted successfully",
+        });
+        setIsDeleteDialogOpen(false);
+        setSelectedUser(null);
+      },
+      onError: (error: unknown) => {
+        const err = error as AxiosErrorLike;
+        toast({
+          title: "Error",
+          description: err.response?.data?.message || "Failed to delete user",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
-  const filteredUsers = users.filter(user =>
-    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.phone.includes(searchTerm)
-  );
+  // Server-side filtering - no client-side filter needed
+  const filteredUsers = users;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -406,8 +415,8 @@ const UsersManagement = () => {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddUser} disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button onClick={handleAddUser} disabled={createUserMutation.isPending}>
+                {createUserMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     Creating...
@@ -539,9 +548,9 @@ const UsersManagement = () => {
             <Button
               variant="destructive"
               onClick={handleDeleteUser}
-              disabled={isSubmitting}
+              disabled={deleteUserMutation.isPending}
             >
-              {isSubmitting ? (
+              {deleteUserMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   Deleting...
@@ -553,6 +562,17 @@ const UsersManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pagination Controls */}
+      {totalPages > 0 && (
+        <PaginationControls
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={totalItems}
+          isLoading={isLoading}
+        />
+      )}
 
       {/* User Details Modal */}
       <UserDetailsModal

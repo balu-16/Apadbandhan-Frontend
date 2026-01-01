@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,20 +102,48 @@ const PartnerRequests = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [reviewNotes, setReviewNotes] = useState("");
 
-  useEffect(() => {
-    fetchRequests();
-    fetchStats();
-  }, []);
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const response = await partnersAPI.getAll();
-      setRequests(response.data);
+      const response = await partnersAPI.getAll(
+        statusFilter !== 'all' ? statusFilter : undefined,
+        {
+          page,
+          limit: 10,
+          search: debouncedSearchQuery || undefined,
+        }
+      );
+      setRequests(response.data.data);
+      setTotalPages(response.data.meta.totalPages);
+      setTotalItems(response.data.meta.total);
     } catch {
       toast.error("Failed to load partner requests");
     } finally {
       setIsLoading(false);
     }
+  }, [page, statusFilter, debouncedSearchQuery]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchQuery, statusFilter]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   const fetchStats = async () => {
@@ -155,14 +185,10 @@ const PartnerRequests = () => {
     }
   };
 
+  // Server-side filtering for search and status - only type filter is client-side
   const filteredRequests = requests.filter((request) => {
-    const matchesSearch =
-      request.organizationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || request.status === statusFilter;
     const matchesType = typeFilter === "all" || request.partnerType === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesType;
   });
 
   const formatDate = (dateString: string) => {
@@ -354,6 +380,17 @@ const PartnerRequests = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 0 && (
+        <PaginationControls
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={totalItems}
+          isLoading={isLoading}
+        />
       )}
 
       {/* Detail Dialog */}

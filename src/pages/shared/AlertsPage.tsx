@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { useAuth } from "@/contexts/AuthContext";
 import { alertsAPI, sosAPI } from "@/services/api";
 import { toast } from "sonner";
@@ -703,6 +705,12 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [stats, setStats] = useState<{
     total: number;
     pending: number;
@@ -760,14 +768,24 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
           }
         };
       } else {
-        // Admin / SuperAdmin uses generic combined API
+        // Admin / SuperAdmin uses generic combined API with pagination
         [alertsRes, statsRes] = await Promise.all([
-          alertsAPI.getCombined(sourceFilter),
+          alertsAPI.getCombined(sourceFilter, {
+            page,
+            limit: 10,
+          }),
           alertsAPI.getCombinedStats(),
         ]);
       }
 
-      setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+      // Handle paginated response for admin/superadmin
+      if (portalType === 'admin' || portalType === 'superadmin') {
+        setAlerts(alertsRes.data.data || []);
+        setTotalPages(alertsRes.data.meta?.totalPages || 1);
+        setTotalItems(alertsRes.data.meta?.total || 0);
+      } else {
+        setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+      }
       setStats(statsRes.data);
     } catch {
       setAlerts([]);
@@ -775,11 +793,20 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [sourceFilter]);
+  }, [sourceFilter, page, portalType]);
 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [sourceFilter, debouncedSearchQuery]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
   const handleViewAlert = (alert: Alert) => {
     setSelectedAlert(alert);
@@ -1099,6 +1126,19 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
           <p className="text-muted-foreground">
             {searchQuery ? "No alerts match your search" : "No emergency alerts have been received"}
           </p>
+        </div>
+      )}
+
+      {/* Pagination Controls - Only show for admin/superadmin */}
+      {(portalType === 'admin' || portalType === 'superadmin') && totalPages > 0 && (
+        <div className="mt-6">
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={totalItems}
+            isLoading={isLoading}
+          />
         </div>
       )}
 

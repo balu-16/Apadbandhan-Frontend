@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -94,6 +96,18 @@ const AllDevices = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [generateCount, setGenerateCount] = useState("10");
 
+  // Pagination state for registered devices
+  const [devicesPage, setDevicesPage] = useState(1);
+  const [devicesTotalPages, setDevicesTotalPages] = useState(1);
+  const [devicesTotalItems, setDevicesTotalItems] = useState(0);
+
+  // Pagination state for QR codes
+  const [qrPage, setQrPage] = useState(1);
+  const [qrTotalPages, setQrTotalPages] = useState(1);
+  const [qrTotalItems, setQrTotalItems] = useState(0);
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   // Device details popup state
   const [selectedDevice, setSelectedDevice] = useState<QrCodeDevice | RegisteredDevice | null>(null);
   const [selectedDeviceType, setSelectedDeviceType] = useState<"qrcode" | "registered">("qrcode");
@@ -111,15 +125,28 @@ const AllDevices = () => {
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
   const fetchData = useCallback(async () => {
+    setIsLoading(true);
     try {
       const [qrCodesRes, statsRes, devicesRes] = await Promise.all([
-        adminAPI.getAllQrCodes(),
+        adminAPI.getAllQrCodes({
+          page: qrPage,
+          limit: 10,
+          search: debouncedSearchTerm || undefined,
+        }),
         adminAPI.getQrCodesStats(),
-        adminAPI.getAllDevices(),
+        adminAPI.getAllDevices(undefined, {
+          page: devicesPage,
+          limit: 10,
+          search: debouncedSearchTerm || undefined,
+        }),
       ]);
-      setQrCodes(qrCodesRes.data);
+      setQrCodes(qrCodesRes.data.data);
+      setQrTotalPages(qrCodesRes.data.meta.totalPages);
+      setQrTotalItems(qrCodesRes.data.meta.total);
       setStats(statsRes.data);
-      setRegisteredDevices(devicesRes.data);
+      setRegisteredDevices(devicesRes.data.data);
+      setDevicesTotalPages(devicesRes.data.meta.totalPages);
+      setDevicesTotalItems(devicesRes.data.meta.total);
     } catch {
       toast({
         title: "Error",
@@ -129,11 +156,25 @@ const AllDevices = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, qrPage, devicesPage, debouncedSearchTerm]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setDevicesPage(1);
+    setQrPage(1);
+  }, [debouncedSearchTerm]);
+
+  const handleDevicesPageChange = (newPage: number) => {
+    setDevicesPage(newPage);
+  };
+
+  const handleQrPageChange = (newPage: number) => {
+    setQrPage(newPage);
+  };
 
   const handleGenerate = async () => {
     const count = parseInt(generateCount);
@@ -217,17 +258,9 @@ const AllDevices = () => {
     return `${apiBaseUrl}/qrcodes/image/${deviceCode}`;
   };
 
-  const filteredQrCodes = qrCodes.filter(device =>
-    device.deviceCode.includes(searchTerm) ||
-    device.deviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (device.assignedUser?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const filteredRegisteredDevices = registeredDevices.filter(device =>
-    device.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    device.code?.includes(searchTerm) ||
-    device.type?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Server-side filtering - no client-side filter needed
+  const filteredQrCodes = qrCodes;
+  const filteredRegisteredDevices = registeredDevices;
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -366,8 +399,8 @@ const AllDevices = () => {
 
       <Tabs defaultValue="registered" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="registered">Registered Devices ({filteredRegisteredDevices.length})</TabsTrigger>
-          <TabsTrigger value="qrcodes">QR Codes ({filteredQrCodes.length})</TabsTrigger>
+          <TabsTrigger value="registered">Registered Devices ({devicesTotalItems})</TabsTrigger>
+          <TabsTrigger value="qrcodes">QR Codes ({qrTotalItems})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="registered">
@@ -431,6 +464,17 @@ const AllDevices = () => {
                     </Card>
                   ))}
                 </div>
+              )}
+
+              {/* Pagination for registered devices */}
+              {devicesTotalPages > 0 && (
+                <PaginationControls
+                  currentPage={devicesPage}
+                  totalPages={devicesTotalPages}
+                  onPageChange={handleDevicesPageChange}
+                  totalItems={devicesTotalItems}
+                  isLoading={isLoading}
+                />
               )}
             </CardContent>
           </Card>
@@ -520,6 +564,17 @@ const AllDevices = () => {
                     </Card>
                   ))}
                 </div>
+              )}
+
+              {/* Pagination for QR codes */}
+              {qrTotalPages > 0 && (
+                <PaginationControls
+                  currentPage={qrPage}
+                  totalPages={qrTotalPages}
+                  onPageChange={handleQrPageChange}
+                  totalItems={qrTotalItems}
+                  isLoading={isLoading}
+                />
               )}
             </CardContent>
           </Card>

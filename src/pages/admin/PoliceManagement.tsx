@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +75,12 @@ const PoliceManagement = () => {
   const [selectedPolice, setSelectedPolice] = useState<PoliceUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   const [editPolice, setEditPolice] = useState({
     fullName: "",
     email: "",
@@ -95,9 +103,16 @@ const PoliceManagement = () => {
   const { toast } = useToast();
 
   const fetchPoliceUsers = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const response = await adminAPI.getAllPoliceUsers();
-      setPoliceUsers(response.data);
+      const response = await adminAPI.getAllPoliceUsers({
+        page,
+        limit: 10,
+        search: debouncedSearchTerm || undefined,
+      });
+      setPoliceUsers(response.data.data);
+      setTotalPages(response.data.meta.totalPages);
+      setTotalItems(response.data.meta.total);
     } catch {
       toast({
         title: "Error",
@@ -107,11 +122,20 @@ const PoliceManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, page, debouncedSearchTerm]);
 
   useEffect(() => {
     fetchPoliceUsers();
   }, [fetchPoliceUsers]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchTerm]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
   const handleAddPolice = async () => {
     if (!newPolice.fullName || !newPolice.email || !newPolice.phone || !newPolice.stationName) {
@@ -234,12 +258,8 @@ const PoliceManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const filteredPolice = policeUsers.filter(
-    (police) =>
-      police.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      police.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      police.phone?.includes(searchTerm)
-  );
+  // Server-side filtering - no client-side filter needed
+  const filteredPolice = policeUsers;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-IN", {
@@ -581,6 +601,17 @@ const PoliceManagement = () => {
           </DialogFooter>
         </DialogContent >
       </Dialog >
+
+      {/* Pagination Controls */}
+      {totalPages > 0 && (
+        <PaginationControls
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={totalItems}
+          isLoading={isLoading}
+        />
+      )}
     </div >
   );
 };

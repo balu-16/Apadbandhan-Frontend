@@ -1,5 +1,24 @@
 import axios from 'axios';
 
+// Pagination types
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
 // Type definitions
 export interface UserProfile {
   id: string;
@@ -140,9 +159,9 @@ export const devicesAPI = {
 export const alertsAPI = {
   getAll: (params?: { status?: string; limit?: number; skip?: number }) =>
     api.get('/alerts', { params }),
-  // Combined alerts and SOS events with optional filter
-  getCombined: (source: 'all' | 'alert' | 'sos' = 'all') =>
-    api.get('/alerts/combined', { params: { source } }),
+  // Combined alerts and SOS events with optional filter and pagination
+  getCombined: (source: 'all' | 'alert' | 'sos' = 'all', params?: PaginationParams) =>
+    api.get('/alerts/combined', { params: { source, ...params } }),
   getStats: () => api.get('/alerts/stats'),
   getCombinedStats: () => api.get('/alerts/stats/combined'),
   getByDevice: (deviceId: string) => api.get(`/alerts/device/${deviceId}`),
@@ -190,7 +209,8 @@ export const deviceLocationsAPI = {
 // Admin API
 export const adminAPI = {
   // User management (Admin/SuperAdmin)
-  getAllUsers: (role?: string) => api.get('/admin/users', { params: { role } }),
+  getAllUsers: (role?: string, params?: PaginationParams) => 
+    api.get('/admin/users', { params: { role, ...params } }),
   getUserById: (id: string) => api.get(`/admin/users/${id}`),
   createUser: (data: {
     fullName: string;
@@ -206,13 +226,15 @@ export const adminAPI = {
   deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
 
   // Admin management (SuperAdmin only)
-  getAllAdmins: () => api.get('/admin/admins'),
+  getAllAdmins: (params?: PaginationParams) => 
+    api.get('/admin/admins', { params }),
   createAdmin: (data: { fullName: string; email: string; phone: string }) =>
     api.post('/admin/admins', data),
   deleteAdmin: (id: string) => api.delete(`/admin/admins/${id}`),
 
   // Police user management (SuperAdmin only)
-  getAllPoliceUsers: () => api.get('/admin/police-users'),
+  getAllPoliceUsers: (params?: PaginationParams) => 
+    api.get('/admin/police-users', { params }),
   createPoliceUser: (data: {
     fullName: string;
     email: string;
@@ -233,7 +255,8 @@ export const adminAPI = {
   }) => api.patch(`/admin/police-users/${id}`, data),
 
   // Hospital user management (SuperAdmin only)
-  getAllHospitalUsers: () => api.get('/admin/hospital-users'),
+  getAllHospitalUsers: (params?: PaginationParams) => 
+    api.get('/admin/hospital-users', { params }),
   createHospitalUser: (data: {
     fullName: string;
     email: string;
@@ -256,12 +279,14 @@ export const adminAPI = {
   }) => api.patch(`/admin/hospital-users/${id}`, data),
 
   // Device management (Admin/SuperAdmin)
-  getAllDevices: (userId?: string) => api.get('/admin/devices', { params: { userId } }),
+  getAllDevices: (userId?: string, params?: PaginationParams) => 
+    api.get('/admin/devices', { params: { userId, ...params } }),
   getDeviceById: (id: string) => api.get(`/admin/devices/${id}`),
 
   // Device generation (Admin/SuperAdmin)
   generateDevices: (count: number) => api.post('/admin/devices/generate', { count }),
-  getAllQrCodes: () => api.get('/admin/devices/qrcodes'),
+  getAllQrCodes: (params?: PaginationParams) => 
+    api.get('/admin/devices/qrcodes', { params }),
   getQrCodesStats: () => api.get('/admin/devices/qrcodes/stats'),
 
   // Statistics
@@ -461,7 +486,8 @@ export const partnersAPI = {
   }) => api.post('/partners/request', data),
 
   // Admin - Get all partner requests
-  getAll: (status?: string) => api.get('/partners', { params: { status } }),
+  getAll: (status?: string, params?: PaginationParams) => 
+    api.get('/partners', { params: { status, ...params } }),
 
   // Admin - Get partner request stats
   getStats: () => api.get('/partners/stats'),

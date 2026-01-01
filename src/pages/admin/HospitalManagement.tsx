@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +78,12 @@ const HospitalManagement = () => {
   const [selectedHospital, setSelectedHospital] = useState<HospitalUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   const [editHospital, setEditHospital] = useState({
     fullName: "",
     email: "",
@@ -100,9 +108,16 @@ const HospitalManagement = () => {
   const { toast } = useToast();
 
   const fetchHospitalUsers = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const response = await adminAPI.getAllHospitalUsers();
-      setHospitalUsers(response.data);
+      const response = await adminAPI.getAllHospitalUsers({
+        page,
+        limit: 10,
+        search: debouncedSearchTerm || undefined,
+      });
+      setHospitalUsers(response.data.data);
+      setTotalPages(response.data.meta.totalPages);
+      setTotalItems(response.data.meta.total);
     } catch {
       toast({
         title: "Error",
@@ -112,11 +127,20 @@ const HospitalManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, page, debouncedSearchTerm]);
 
   useEffect(() => {
     fetchHospitalUsers();
   }, [fetchHospitalUsers]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchTerm]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
   const handleAddHospital = async () => {
     if (!newHospital.fullName || !newHospital.email || !newHospital.phone || !newHospital.hospitalPreference) {
@@ -251,12 +275,8 @@ const HospitalManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const filteredHospitals = hospitalUsers.filter(
-    (hospital) =>
-      hospital.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      hospital.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      hospital.phone?.includes(searchTerm)
-  );
+  // Server-side filtering - no client-side filter needed
+  const filteredHospitals = hospitalUsers;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-IN", {
@@ -638,6 +658,17 @@ const HospitalManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pagination Controls */}
+      {totalPages > 0 && (
+        <PaginationControls
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={totalItems}
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 };

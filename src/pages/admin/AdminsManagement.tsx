@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +66,12 @@ const AdminsManagement = () => {
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
   // Admin details modal state
   const [viewAdmin, setViewAdmin] = useState<Admin | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -79,9 +87,16 @@ const AdminsManagement = () => {
   const { toast } = useToast();
 
   const fetchAdmins = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const response = await adminAPI.getAllAdmins();
-      setAdmins(response.data);
+      const response = await adminAPI.getAllAdmins({
+        page,
+        limit: 10,
+        search: debouncedSearchTerm || undefined,
+      });
+      setAdmins(response.data.data);
+      setTotalPages(response.data.meta.totalPages);
+      setTotalItems(response.data.meta.total);
     } catch {
       toast({
         title: "Error",
@@ -91,11 +106,20 @@ const AdminsManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, page, debouncedSearchTerm]);
 
   useEffect(() => {
     fetchAdmins();
   }, [fetchAdmins]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchTerm]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
   const handleAddAdmin = async () => {
     if (!newAdmin.fullName || !newAdmin.email || !newAdmin.phone) {
@@ -158,11 +182,8 @@ const AdminsManagement = () => {
     }
   };
 
-  const filteredAdmins = admins.filter(admin =>
-    admin.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    admin.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    admin.phone.includes(searchTerm)
-  );
+  // Server-side filtering - no client-side filter needed
+  const filteredAdmins = admins;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -401,6 +422,17 @@ const AdminsManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pagination Controls */}
+      {totalPages > 0 && (
+        <PaginationControls
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={totalItems}
+          isLoading={isLoading}
+        />
+      )}
 
       {/* Admin Details Modal */}
       <AdminDetailsModal
