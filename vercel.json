@@ -1,26 +1,4 @@
 {
-  "rewrites": [
-    {
-      "source": "/(favicon\\.ico)",
-      "destination": "/favicon.ico"
-    },
-    {
-      "source": "/(apple-touch-icon\\.png)",
-      "destination": "/apple-touch-icon.png"
-    },
-    {
-      "source": "/(android-chrome-192x192\\.png)",
-      "destination": "/android-chrome-192x192.png"
-    },
-    {
-      "source": "/(android-chrome-512x512\\.png)",
-      "destination": "/android-chrome-512x512.png"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",
