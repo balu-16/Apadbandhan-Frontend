@@ -1,7 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+// Police siren sound URL (using a free sound effect)
+const SIREN_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
 // Types
 interface Responder {
@@ -28,29 +31,37 @@ interface SOSRespondersMapProps {
   onResponderClick?: (responder: Responder) => void;
 }
 
-// Custom icons
+// Custom icons - Blinking SOS victim icon
 const victimIcon = L.divIcon({
-  className: 'custom-marker',
+  className: 'custom-marker sos-active',
   html: `
-    <div style="
-      width: 40px;
-      height: 40px;
-      background: #ef4444;
-      border: 3px solid #fff;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
-    ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
-        <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
-        <circle cx="12" cy="10" r="3"/>
-      </svg>
+    <div class="sos-marker-container" style="position: relative; width: 50px; height: 50px;">
+      <div class="sos-pulse-ring" style="position: absolute; top: 5px; left: 5px; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite;"></div>
+      <div class="sos-pulse-ring" style="position: absolute; top: 5px; left: 5px; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite 0.5s;"></div>
+      <div class="sos-marker-blink" style="
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        width: 40px;
+        height: 40px;
+        background: #ef4444;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+        animation: sos-blink 0.8s ease-in-out infinite;
+      ">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
     </div>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
+  iconSize: [50, 50],
+  iconAnchor: [25, 50],
 });
 
 const policeIcon = L.divIcon({
@@ -114,6 +125,43 @@ const SOSRespondersMap: React.FC<SOSRespondersMapProps> = ({
   onResponderClick,
 }) => {
   const mapRef = useRef<L.Map | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isSirenPlaying, setIsSirenPlaying] = useState(false);
+
+  // Play siren sound on mount
+  useEffect(() => {
+    const audio = new Audio(SIREN_SOUND_URL);
+    audio.loop = true;
+    audio.volume = 0.3;
+    audioRef.current = audio;
+
+    // Auto-play siren (may require user interaction due to browser policies)
+    const playSiren = async () => {
+      try {
+        await audio.play();
+        setIsSirenPlaying(true);
+      } catch (err) {
+        console.log('Auto-play blocked, user interaction required');
+      }
+    };
+    playSiren();
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+    };
+  }, []);
+
+  const toggleSiren = () => {
+    if (audioRef.current) {
+      if (isSirenPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsSirenPlaying(!isSirenPlaying);
+    }
+  };
 
   // Calculate bounds to fit all markers
   const allPoints: [number, number][] = [
@@ -136,7 +184,25 @@ const SOSRespondersMap: React.FC<SOSRespondersMapProps> = ({
   };
 
   return (
-    <div className="w-full h-full min-h-[400px] rounded-xl overflow-hidden border border-border/50">
+    <div className="w-full h-full min-h-[400px] rounded-xl overflow-hidden border border-border/50 relative">
+      {/* Siren Toggle Button */}
+      <button
+        onClick={toggleSiren}
+        className={`absolute top-3 right-3 z-[1000] px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-lg transition-all ${
+          isSirenPlaying
+            ? 'bg-red-500 text-white animate-pulse'
+            : 'bg-white text-gray-700 hover:bg-gray-100'
+        }`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {isSirenPlaying ? (
+            <path d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6"/>
+          ) : (
+            <path d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          )}
+        </svg>
+        {isSirenPlaying ? 'Mute Siren' : 'Play Siren'}
+      </button>
       <MapContainer
         center={[victimLocation.lat, victimLocation.lng]}
         zoom={13}

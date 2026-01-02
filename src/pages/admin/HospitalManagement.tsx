@@ -34,12 +34,14 @@ import {
   Navigation,
   Building2,
   Stethoscope,
-  Pencil
+  Pencil,
+  Eye
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import HospitalDetailsModal from "@/components/admin/HospitalDetailsModal";
 
 interface AxiosErrorLike {
   response?: {
@@ -61,20 +63,27 @@ interface HospitalUser {
   isActive: boolean;
   createdAt: string;
   hospitalPreference?: string;
+  hospitalType?: 'government' | 'private';
   specialization?: string;
   address?: string;
+  onDuty?: boolean;
+  lastLoginAt?: string;
   baseLocation?: {
-    coordinates?: [number, number];
+    latitude: number;
+    longitude: number;
+    address?: string;
   };
 }
 
 const HospitalManagement = () => {
   const [hospitalUsers, setHospitalUsers] = useState<HospitalUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState<HospitalUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -107,7 +116,8 @@ const HospitalManagement = () => {
 
   const { toast } = useToast();
 
-  const fetchHospitalUsers = useCallback(async () => {
+  const fetchHospitalUsers = useCallback(async (isInitial = false) => {
+    if (isInitial) setInitialLoading(true);
     setIsLoading(true);
     try {
       const response = await adminAPI.getAllHospitalUsers({
@@ -115,9 +125,9 @@ const HospitalManagement = () => {
         limit: 10,
         search: debouncedSearchTerm || undefined,
       });
-      setHospitalUsers(response.data.data);
-      setTotalPages(response.data.meta.totalPages);
-      setTotalItems(response.data.meta.total);
+      setHospitalUsers(response.data?.data || []);
+      setTotalPages(response.data?.meta?.totalPages || 1);
+      setTotalItems(response.data?.meta?.total || 0);
     } catch {
       toast({
         title: "Error",
@@ -126,12 +136,23 @@ const HospitalManagement = () => {
       });
     } finally {
       setIsLoading(false);
+      setInitialLoading(false);
     }
   }, [toast, page, debouncedSearchTerm]);
 
+  // Initial fetch
   useEffect(() => {
-    fetchHospitalUsers();
-  }, [fetchHospitalUsers]);
+    fetchHospitalUsers(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch on pagination/search change
+  useEffect(() => {
+    if (!initialLoading) {
+      fetchHospitalUsers(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearchTerm]);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -269,8 +290,8 @@ const HospitalManagement = () => {
       hospitalPreference: hospital.hospitalPreference || "",
       specialization: hospital.specialization || "",
       address: hospital.address || "",
-      latitude: hospital.baseLocation?.coordinates?.[1]?.toString() || "",
-      longitude: hospital.baseLocation?.coordinates?.[0]?.toString() || "",
+      latitude: hospital.baseLocation?.latitude?.toString() || "",
+      longitude: hospital.baseLocation?.longitude?.toString() || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -286,7 +307,7 @@ const HospitalManagement = () => {
     });
   };
 
-  if (isLoading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-12 w-12 animate-spin text-red-500" />
@@ -483,7 +504,14 @@ const HospitalManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredHospitals.map((hospital) => (
-                    <TableRow key={hospital._id || hospital.id}>
+                    <TableRow 
+                      key={hospital._id || hospital.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedHospital(hospital);
+                        setIsDetailsModalOpen(true);
+                      }}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -513,8 +541,20 @@ const HospitalManagement = () => {
                           {formatDate(hospital.createdAt)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-rose-500"
+                            onClick={() => {
+                              setSelectedHospital(hospital);
+                              setIsDetailsModalOpen(true);
+                            }}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -658,6 +698,13 @@ const HospitalManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hospital Details Modal */}
+      <HospitalDetailsModal
+        hospital={selectedHospital}
+        open={isDetailsModalOpen}
+        onOpenChange={setIsDetailsModalOpen}
+      />
 
       {/* Pagination Controls */}
       {totalPages > 0 && (

@@ -91,7 +91,8 @@ const AllDevices = () => {
   const [qrCodes, setQrCodes] = useState<QrCodeDevice[]>([]);
   const [registeredDevices, setRegisteredDevices] = useState<RegisteredDevice[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [generateCount, setGenerateCount] = useState("10");
@@ -124,7 +125,8 @@ const AllDevices = () => {
   // API base URL for QR images
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isInitial = false) => {
+    if (isInitial) setInitialLoading(true);
     setIsLoading(true);
     try {
       const [qrCodesRes, statsRes, devicesRes] = await Promise.all([
@@ -132,6 +134,7 @@ const AllDevices = () => {
           page: qrPage,
           limit: 10,
           search: debouncedSearchTerm || undefined,
+          status: 'available', // Only show unregistered QR codes
         }),
         adminAPI.getQrCodesStats(),
         adminAPI.getAllDevices(undefined, {
@@ -140,13 +143,13 @@ const AllDevices = () => {
           search: debouncedSearchTerm || undefined,
         }),
       ]);
-      setQrCodes(qrCodesRes.data.data);
-      setQrTotalPages(qrCodesRes.data.meta.totalPages);
-      setQrTotalItems(qrCodesRes.data.meta.total);
+      setQrCodes(qrCodesRes.data?.data || []);
+      setQrTotalPages(qrCodesRes.data?.meta?.totalPages || 1);
+      setQrTotalItems(qrCodesRes.data?.meta?.total || 0);
       setStats(statsRes.data);
-      setRegisteredDevices(devicesRes.data.data);
-      setDevicesTotalPages(devicesRes.data.meta.totalPages);
-      setDevicesTotalItems(devicesRes.data.meta.total);
+      setRegisteredDevices(devicesRes.data?.data || []);
+      setDevicesTotalPages(devicesRes.data?.meta?.totalPages || 1);
+      setDevicesTotalItems(devicesRes.data?.meta?.total || 0);
     } catch {
       toast({
         title: "Error",
@@ -155,12 +158,23 @@ const AllDevices = () => {
       });
     } finally {
       setIsLoading(false);
+      setInitialLoading(false);
     }
   }, [toast, qrPage, devicesPage, debouncedSearchTerm]);
 
+  // Initial fetch
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch on pagination/search change (not initial)
+  useEffect(() => {
+    if (!initialLoading) {
+      fetchData(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrPage, devicesPage, debouncedSearchTerm]);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -281,7 +295,7 @@ const AllDevices = () => {
     }
   };
 
-  if (isLoading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -400,7 +414,7 @@ const AllDevices = () => {
       <Tabs defaultValue="registered" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
           <TabsTrigger value="registered">Registered Devices ({devicesTotalItems})</TabsTrigger>
-          <TabsTrigger value="qrcodes">QR Codes ({qrTotalItems})</TabsTrigger>
+          <TabsTrigger value="qrcodes">QR Codes ({stats?.available || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="registered">
@@ -484,7 +498,7 @@ const AllDevices = () => {
           <Card className="bg-card border-border/50">
             <CardHeader>
               <CardTitle>QR Codes</CardTitle>
-              <CardDescription>Generated device codes ready for assignment</CardDescription>
+              <CardDescription>Available device codes ready for assignment (not yet registered)</CardDescription>
             </CardHeader>
             <CardContent>
               {filteredQrCodes.length === 0 ? (

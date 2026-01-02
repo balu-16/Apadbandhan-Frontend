@@ -157,6 +157,13 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [mapFilters, setMapFilters] = useState({
+    showStart: true,
+    showWaypoints: true,
+    showSOS: true,
+    showCurrent: true,
+    showRoute: true,
+  });
 
   const isQrCode = deviceType === "qrcode";
   const qrDevice = device as QrCodeDevice;
@@ -639,23 +646,93 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
 
               {/* Map Tab */}
               <TabsContent value="map" className="space-y-4">
-                {/* Refresh Controls */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {regDevice.status === 'online' && (
-                      <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30 text-xs">
-                        <RefreshCw className={cn("w-3 h-3 mr-1", isRefreshing && "animate-spin")} />
-                        Auto-refresh: 20s
-                      </Badge>
-                    )}
-                    {lastRefreshTime && (
-                      <span className="text-xs text-muted-foreground">Updated: {lastRefreshTime.toLocaleTimeString()}</span>
-                    )}
+                {/* Refresh Controls & Filter Controls */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {regDevice.status === 'online' && (
+                        <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30 text-xs">
+                          <RefreshCw className={cn("w-3 h-3 mr-1", isRefreshing && "animate-spin")} />
+                          Auto-refresh: 20s
+                        </Badge>
+                      )}
+                      {lastRefreshTime && (
+                        <span className="text-xs text-muted-foreground">Updated: {lastRefreshTime.toLocaleTimeString()}</span>
+                      )}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleManualRefresh} disabled={isRefreshing || isLoadingLocations} className="gap-1">
+                      <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+                      Refresh
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleManualRefresh} disabled={isRefreshing || isLoadingLocations} className="gap-1">
-                    <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
-                    Refresh
-                  </Button>
+                  {/* Map Filter Controls - beside refresh */}
+                  {hasLocationHistory && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground font-medium">Filter:</span>
+                      <button
+                        onClick={() => setMapFilters(prev => ({ ...prev, showStart: !prev.showStart }))}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all text-xs",
+                          mapFilters.showStart
+                            ? "bg-green-500/20 border-green-500/50 text-green-600"
+                            : "bg-muted/30 border-border text-muted-foreground opacity-50"
+                        )}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        Start
+                      </button>
+                      <button
+                        onClick={() => setMapFilters(prev => ({ ...prev, showWaypoints: !prev.showWaypoints }))}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all text-xs",
+                          mapFilters.showWaypoints
+                            ? "bg-blue-500/20 border-blue-500/50 text-blue-600"
+                            : "bg-muted/30 border-border text-muted-foreground opacity-50"
+                        )}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        Waypoints
+                      </button>
+                      {locationHistory.some(loc => loc.isSOS) && (
+                        <button
+                          onClick={() => setMapFilters(prev => ({ ...prev, showSOS: !prev.showSOS }))}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all text-xs",
+                            mapFilters.showSOS
+                              ? "bg-red-500/20 border-red-500/50 text-red-600"
+                              : "bg-muted/30 border-border text-muted-foreground opacity-50"
+                          )}
+                        >
+                          <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                          SOS
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setMapFilters(prev => ({ ...prev, showCurrent: !prev.showCurrent }))}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all text-xs",
+                          mapFilters.showCurrent
+                            ? "bg-red-500/20 border-red-500/50 text-red-600"
+                            : "bg-muted/30 border-border text-muted-foreground opacity-50"
+                        )}
+                      >
+                        <div className="w-0 h-0 border-l-[4px] border-r-[4px] border-b-[8px] border-l-transparent border-r-transparent border-b-red-500"></div>
+                        Current
+                      </button>
+                      <button
+                        onClick={() => setMapFilters(prev => ({ ...prev, showRoute: !prev.showRoute }))}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all text-xs",
+                          mapFilters.showRoute
+                            ? "bg-blue-500/20 border-blue-500/50 text-blue-600"
+                            : "bg-muted/30 border-border text-muted-foreground opacity-50"
+                        )}
+                      >
+                        <div className="w-4 h-0.5 bg-blue-500 rounded"></div>
+                        Route
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Map Container */}
@@ -669,32 +746,36 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                     <MapContainer key={mapKey} center={[lat, lng]} zoom={10} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
                       <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                       {routeCoordinates.length > 0 && <FitBoundsToMarkers locations={routeCoordinates} />}
-                      {locationHistory.length > 1 && (
+                      {locationHistory.length > 1 && mapFilters.showRoute && (
                         <Polyline positions={routeCoordinates} color="#3b82f6" weight={4} opacity={0.8} dashArray="10, 5" />
                       )}
-                      {locationHistory.length > 0 && (
+                      {locationHistory.length > 0 && mapFilters.showStart && (
                         <Marker position={[locationHistory[0].latitude, locationHistory[0].longitude]} icon={startIcon}>
                           <Tooltip direction="top">🟢 Start Point</Tooltip>
                         </Marker>
                       )}
-                      {locationHistory.length > 1 && (
+                      {locationHistory.length > 1 && mapFilters.showCurrent && (
                         <Marker position={[locationHistory[locationHistory.length - 1].latitude, locationHistory[locationHistory.length - 1].longitude]} icon={endIcon}>
                           <Tooltip direction="top">🏁 Current Location</Tooltip>
                         </Marker>
                       )}
-                      {locationHistory.length > 2 && locationHistory.slice(1, -1).map((loc) => (
-                        <CircleMarker
-                          key={loc._id}
-                          center={[loc.latitude, loc.longitude]}
-                          radius={loc.isSOS ? 8 : 6}
-                          fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"}
-                          fillOpacity={0.9}
-                          color="white"
-                          weight={loc.isSOS ? 3 : 2}
-                        >
-                          {loc.isSOS && <Tooltip direction="top">🚨 SOS</Tooltip>}
-                        </CircleMarker>
-                      ))}
+                      {locationHistory.length > 2 && locationHistory.slice(1, -1).map((loc) => {
+                        if (loc.isSOS && !mapFilters.showSOS) return null;
+                        if (!loc.isSOS && !mapFilters.showWaypoints) return null;
+                        return (
+                          <CircleMarker
+                            key={loc._id}
+                            center={[loc.latitude, loc.longitude]}
+                            radius={loc.isSOS ? 8 : 6}
+                            fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"}
+                            fillOpacity={0.9}
+                            color="white"
+                            weight={loc.isSOS ? 3 : 2}
+                          >
+                            {loc.isSOS && <Tooltip direction="top">🚨 SOS</Tooltip>}
+                          </CircleMarker>
+                        );
+                      })}
                     </MapContainer>
                   ) : (
                     <div className="h-full w-full flex flex-col items-center justify-center bg-muted/30">
@@ -704,17 +785,6 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                     </div>
                   )}
                 </div>
-
-                {/* Map Legend */}
-                {hasLocationHistory && (
-                  <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500"></div>Start</div>
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-500"></div>Waypoints</div>
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-500"></div>SOS</div>
-                    <div className="flex items-center gap-1"><div className="w-0 h-0 border-l-4 border-r-4 border-b-8 border-l-transparent border-r-transparent border-b-red-500"></div>Current</div>
-                    <div className="flex items-center gap-1"><div className="w-4 h-0.5 bg-blue-500 border-dashed"></div>Route</div>
-                  </div>
-                )}
               </TabsContent>
 
               {/* History Tab */}
@@ -736,40 +806,61 @@ const DeviceDetailsPopup = ({ device, deviceType, open, onOpenChange, onDelete }
                   </div>
                 ) : locationHistory.length > 0 ? (
                   <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2">
-                    {[...locationHistory].reverse().map((loc, index) => (
-                      <div
-                        key={loc._id}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-lg text-sm",
-                          index === 0 ? "bg-red-500/10 border border-red-500/20" :
-                            index === locationHistory.length - 1 ? "bg-green-500/10 border border-green-500/20" :
-                              "bg-muted/30"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">
-                            {index === 0 ? "🏁" : index === locationHistory.length - 1 ? "🟢" : "📍"}
-                          </span>
-                          <div>
-                            <p className="font-medium break-words">
-                              {loc.address || loc.displayName || loc.city || 'Unknown location'}
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="font-mono">{loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}</span>
-                              {loc.pincode && (
-                                <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
-                                  📮 {loc.pincode}
-                                </span>
-                              )}
+                    {[...locationHistory].reverse().map((loc, index) => {
+                      const isCurrentLocation = index === 0;
+                      const isStartLocation = index === locationHistory.length - 1;
+                      const isSOS = loc.isSOS;
+
+                      return (
+                        <div
+                          key={loc._id}
+                          className={cn(
+                            "flex items-center justify-between p-3 rounded-lg text-sm border",
+                            isSOS
+                              ? "bg-red-500/20 border-red-500/50"
+                              : isCurrentLocation
+                                ? "bg-red-500/10 border-red-500/30"
+                                : isStartLocation
+                                  ? "bg-green-500/10 border-green-500/30"
+                                  : "bg-muted/30 border-border/50"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg">
+                              {isSOS ? "🚨" : isCurrentLocation ? "🏁" : isStartLocation ? "🟢" : "📍"}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className={cn("font-medium break-words", isSOS && "text-red-600")}>
+                                  {isSOS
+                                    ? "SOS Alert Location"
+                                    : loc.address || loc.displayName || loc.city || 'Unknown location'}
+                                </p>
+                                {isSOS && (
+                                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded animate-pulse">
+                                    SOS
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="font-mono">{loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}</span>
+                                {loc.pincode && (
+                                  <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                                    📮 {loc.pincode}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
+                          <div className="text-right">
+                            <p className={cn("text-xs", isSOS ? "text-red-500 font-medium" : "text-muted-foreground")}>
+                              {formatDate(loc.recordedAt)}
+                            </p>
+                            {loc.speed && <p className="text-xs text-blue-500">{loc.speed} km/h</p>}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">{formatDate(loc.recordedAt)}</p>
-                          {loc.speed && <p className="text-xs text-blue-500">{loc.speed} km/h</p>}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8">

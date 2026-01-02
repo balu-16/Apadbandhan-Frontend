@@ -93,7 +93,8 @@ const PartnerRequests = () => {
   const { isSuperAdmin } = useAuth();
   const [requests, setRequests] = useState<PartnerRequest[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -108,7 +109,8 @@ const PartnerRequests = () => {
   const [totalItems, setTotalItems] = useState(0);
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (isInitial = false) => {
+    if (isInitial) setInitialLoading(true);
     setIsLoading(true);
     try {
       const response = await partnersAPI.getAll(
@@ -119,19 +121,30 @@ const PartnerRequests = () => {
           search: debouncedSearchQuery || undefined,
         }
       );
-      setRequests(response.data.data);
-      setTotalPages(response.data.meta.totalPages);
-      setTotalItems(response.data.meta.total);
+      setRequests(response.data?.data || []);
+      setTotalPages(response.data?.meta?.totalPages || 1);
+      setTotalItems(response.data?.meta?.total || 0);
     } catch {
       toast.error("Failed to load partner requests");
     } finally {
       setIsLoading(false);
+      setInitialLoading(false);
     }
   }, [page, statusFilter, debouncedSearchQuery]);
 
+  // Initial fetch
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+    fetchRequests(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch on pagination/filter/search change
+  useEffect(() => {
+    if (!initialLoading) {
+      fetchRequests(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, statusFilter, debouncedSearchQuery]);
 
   useEffect(() => {
     fetchStats();
@@ -201,7 +214,7 @@ const PartnerRequests = () => {
     });
   };
 
-  if (isLoading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-12 h-12 animate-spin text-primary" />
@@ -355,6 +368,11 @@ const PartnerRequests = () => {
                           <Badge variant="outline" className={status.color}>
                             {status.label}
                           </Badge>
+                          {request.partnerType === 'hospital' && request.hospitalType && (
+                            <Badge variant="outline" className={request.hospitalType === 'government' ? 'bg-blue-500/10 text-blue-600 border-blue-500/30' : 'bg-green-500/10 text-green-600 border-green-500/30'}>
+                              {request.hospitalType === 'government' ? 'Government' : 'Private'}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           {request.contactPerson} • {request.email}

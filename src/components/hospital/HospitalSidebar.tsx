@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import React, { memo, useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Home,
@@ -22,10 +22,10 @@ interface HospitalSidebarProps {
   setIsExpanded: (expanded: boolean) => void;
   isMobile?: boolean;
   onMobileClose?: () => void;
+  currentPath: string;
 }
 
-const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileClose }: HospitalSidebarProps) => {
-  const location = useLocation();
+const HospitalSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onMobileClose, currentPath }: HospitalSidebarProps) => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
@@ -55,9 +55,9 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
 
   const isActive = (path: string) => {
     if (path === "/hospital") {
-      return location.pathname === "/hospital";
+      return currentPath === "/hospital";
     }
-    return location.pathname.startsWith(path);
+    return currentPath.startsWith(path);
   };
 
   const handleLogout = () => {
@@ -178,6 +178,8 @@ const HospitalSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobile
       </div>
     </aside>
   );
-};
+});
+
+HospitalSidebar.displayName = 'HospitalSidebar';
 
 export default HospitalSidebar;

@@ -1,4 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { memo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
@@ -29,10 +30,10 @@ interface DashboardSidebarProps {
   setIsExpanded: (expanded: boolean) => void;
   isMobile?: boolean;
   onMobileClose?: () => void;
+  currentPath: string;
 }
 
-const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileClose }: DashboardSidebarProps) => {
-  const location = useLocation();
+const DashboardSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onMobileClose, currentPath }: DashboardSidebarProps) => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
 
@@ -43,9 +44,9 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
-      return location.pathname === "/dashboard";
+      return currentPath === "/dashboard";
     }
-    return location.pathname.startsWith(path);
+    return currentPath.startsWith(path);
   };
 
   return (
@@ -152,6 +153,8 @@ const DashboardSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobil
       </div>
     </aside>
   );
-};
+});
+
+DashboardSidebar.displayName = 'DashboardSidebar';
 
 export default DashboardSidebar;

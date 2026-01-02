@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import PoliceSidebar from "./PoliceSidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,10 +11,21 @@ const PoliceLayout = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { isAuthenticated, isLoading, userRole } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Memoize callbacks to prevent unnecessary sidebar re-renders
+  const handleSetExpanded = useCallback((expanded: boolean) => {
+    setIsSidebarExpanded(expanded);
+  }, []);
+
+  const handleMobileClose = useCallback(() => {
+    setIsMobileSidebarOpen(false);
+  }, []);
+
+  // Close mobile sidebar on route change
   useEffect(() => {
     setIsMobileSidebarOpen(false);
-  }, [navigate]);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -71,9 +82,10 @@ const PoliceLayout = () => {
       )}>
         <PoliceSidebar
           isExpanded={isSidebarExpanded}
-          setIsExpanded={setIsSidebarExpanded}
+          setIsExpanded={handleSetExpanded}
           isMobile={isMobileSidebarOpen}
-          onMobileClose={() => setIsMobileSidebarOpen(false)}
+          onMobileClose={handleMobileClose}
+          currentPath={location.pathname}
         />
       </div>
 

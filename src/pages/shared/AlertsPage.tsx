@@ -61,7 +61,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -72,6 +72,36 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+// Blinking SOS alert marker icon
+const sosAlertIcon = L.divIcon({
+  className: 'custom-marker sos-active',
+  html: `
+    <div style="position: relative; width: 40px; height: 40px;">
+      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite;"></div>
+      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite 0.5s;"></div>
+      <div class="sos-marker-blink" style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 40px;
+        height: 40px;
+        background: #ef4444;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+        animation: sos-blink 0.8s ease-in-out infinite;
+      ">
+        <span style="color: white; font-weight: bold; font-size: 14px;">🚨</span>
+      </div>
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
 });
 
 interface EmergencyContact {
@@ -235,21 +265,36 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: AlertDetailsModalProps
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  <CircleMarker
-                    center={[alert.location!.latitude, alert.location!.longitude]}
-                    radius={12}
-                    fillColor="#ef4444"
-                    fillOpacity={0.9}
-                    color="white"
-                    weight={3}
-                  >
-                    <Popup>
-                      <div className="text-center">
-                        <p className="font-semibold text-red-600">🚨 {alert.source === 'sos' ? 'SOS' : 'Alert'} Location</p>
-                        <p className="text-xs mt-1">{user?.fullName || 'User in Distress'}</p>
-                      </div>
-                    </Popup>
-                  </CircleMarker>
+                  {/* Use blinking marker for active alerts, static for resolved */}
+                  {alert.status !== 'resolved' ? (
+                    <Marker
+                      position={[alert.location!.latitude, alert.location!.longitude]}
+                      icon={sosAlertIcon}
+                    >
+                      <Popup>
+                        <div className="text-center">
+                          <p className="font-semibold text-red-600">🚨 {alert.source === 'sos' ? 'SOS' : 'Alert'} Location</p>
+                          <p className="text-xs mt-1">{user?.fullName || 'User in Distress'}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ) : (
+                    <CircleMarker
+                      center={[alert.location!.latitude, alert.location!.longitude]}
+                      radius={12}
+                      fillColor="#22c55e"
+                      fillOpacity={0.9}
+                      color="white"
+                      weight={3}
+                    >
+                      <Popup>
+                        <div className="text-center">
+                          <p className="font-semibold text-green-600">✓ Resolved</p>
+                          <p className="text-xs mt-1">{user?.fullName || 'User'}</p>
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  )}
                 </MapContainer>
               </div>
 
@@ -1062,7 +1107,13 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                         ? "bg-blue-500/20 text-blue-500"
                         : "bg-red-500/20 text-red-500"
                   )}>
-                    {alert.status || 'pending'}
+                    {alert.status === 'responding' 
+                      ? (alert.respondedBy && 
+                         alert.respondedBy.some(r => r.role === 'police') && 
+                         alert.respondedBy.some(r => r.role === 'hospital') 
+                           ? 'responded' 
+                           : 'responding')
+                      : (alert.status || 'pending')}
                   </Badge>
                   {/* Respond button for police/hospital on SOS alerts */}
                   {isResponder && alert.source === 'sos' && alert.status !== 'resolved' && (

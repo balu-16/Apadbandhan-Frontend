@@ -154,6 +154,11 @@ const BecomePartner = () => {
         toast.error("Please fill in all required fields");
         return;
       }
+      // Validate hospital type for hospitals
+      if (formData.partnerType === 'hospital' && !formData.hospitalType) {
+        toast.error("Please select a hospital type (Government or Private)");
+        return;
+      }
       setStep(3);
     }
   };

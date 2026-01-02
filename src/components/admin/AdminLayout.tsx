@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,12 @@ const AdminLayout = ({ basePath, requiredRole }: AdminLayoutProps) => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const { isAuthenticated, isAdmin, isSuperAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Memoize setIsExpanded to prevent unnecessary re-renders
+  const handleSetExpanded = useCallback((expanded: boolean) => {
+    setIsSidebarExpanded(expanded);
+  }, []);
 
   useEffect(() => {
     if (!isLoading) {
@@ -46,8 +52,9 @@ const AdminLayout = ({ basePath, requiredRole }: AdminLayoutProps) => {
     <div className="min-h-screen bg-background">
       <AdminSidebar 
         isExpanded={isSidebarExpanded} 
-        setIsExpanded={setIsSidebarExpanded}
+        setIsExpanded={handleSetExpanded}
         basePath={basePath}
+        currentPath={location.pathname}
       />
       
       {/* Main Content */}

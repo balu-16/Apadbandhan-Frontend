@@ -106,8 +106,8 @@ const UsersManagement = () => {
 
   // Extract data from query result
   const users = usersData?.data || [];
-  const totalPages = usersData?.meta.totalPages || 1;
-  const totalItems = usersData?.meta.total || 0;
+  const totalPages = usersData?.meta?.totalPages || 1;
+  const totalItems = usersData?.meta?.total || 0;
 
   // Show error toast if fetch fails
   useEffect(() => {

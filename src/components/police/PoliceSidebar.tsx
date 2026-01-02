@@ -1,4 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { memo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
@@ -20,10 +21,10 @@ interface PoliceSidebarProps {
   setIsExpanded: (expanded: boolean) => void;
   isMobile?: boolean;
   onMobileClose?: () => void;
+  currentPath: string;
 }
 
-const PoliceSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileClose }: PoliceSidebarProps) => {
-  const location = useLocation();
+const PoliceSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onMobileClose, currentPath }: PoliceSidebarProps) => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
 
@@ -36,9 +37,9 @@ const PoliceSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileCl
 
   const isActive = (path: string) => {
     if (path === "/police") {
-      return location.pathname === "/police";
+      return currentPath === "/police";
     }
-    return location.pathname.startsWith(path);
+    return currentPath.startsWith(path);
   };
 
   const handleLogout = () => {
@@ -149,6 +150,8 @@ const PoliceSidebar = ({ isExpanded, setIsExpanded, isMobile = false, onMobileCl
       </div>
     </aside>
   );
-};
+});
+
+PoliceSidebar.displayName = 'PoliceSidebar';
 
 export default PoliceSidebar;

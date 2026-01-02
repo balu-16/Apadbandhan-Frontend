@@ -33,12 +33,14 @@ import {
   MapPin,
   BadgeCheck,
   Building,
-  Pencil
+  Pencil,
+  Eye
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import PoliceDetailsModal from "@/components/admin/PoliceDetailsModal";
 
 interface AxiosErrorLike {
   response?: {
@@ -67,11 +69,13 @@ interface PoliceUser {
 
 const PoliceManagement = () => {
   const [policeUsers, setPoliceUsers] = useState<PoliceUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedPolice, setSelectedPolice] = useState<PoliceUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -102,7 +106,8 @@ const PoliceManagement = () => {
 
   const { toast } = useToast();
 
-  const fetchPoliceUsers = useCallback(async () => {
+  const fetchPoliceUsers = useCallback(async (isInitial = false) => {
+    if (isInitial) setInitialLoading(true);
     setIsLoading(true);
     try {
       const response = await adminAPI.getAllPoliceUsers({
@@ -110,9 +115,9 @@ const PoliceManagement = () => {
         limit: 10,
         search: debouncedSearchTerm || undefined,
       });
-      setPoliceUsers(response.data.data);
-      setTotalPages(response.data.meta.totalPages);
-      setTotalItems(response.data.meta.total);
+      setPoliceUsers(response.data?.data || []);
+      setTotalPages(response.data?.meta?.totalPages || 1);
+      setTotalItems(response.data?.meta?.total || 0);
     } catch {
       toast({
         title: "Error",
@@ -121,12 +126,23 @@ const PoliceManagement = () => {
       });
     } finally {
       setIsLoading(false);
+      setInitialLoading(false);
     }
   }, [toast, page, debouncedSearchTerm]);
 
+  // Initial fetch
   useEffect(() => {
-    fetchPoliceUsers();
-  }, [fetchPoliceUsers]);
+    fetchPoliceUsers(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch on pagination/search change
+  useEffect(() => {
+    if (!initialLoading) {
+      fetchPoliceUsers(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearchTerm]);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -269,7 +285,7 @@ const PoliceManagement = () => {
     });
   };
 
-  if (isLoading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
@@ -438,7 +454,14 @@ const PoliceManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPolice.map((police) => (
-                    <TableRow key={police._id || police.id}>
+                    <TableRow 
+                      key={police._id || police.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedPolice(police);
+                        setIsDetailsModalOpen(true);
+                      }}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -468,8 +491,20 @@ const PoliceManagement = () => {
                           {formatDate(police.createdAt)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-blue-500"
+                            onClick={() => {
+                              setSelectedPolice(police);
+                              setIsDetailsModalOpen(true);
+                            }}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -601,6 +636,13 @@ const PoliceManagement = () => {
           </DialogFooter>
         </DialogContent >
       </Dialog >
+
+      {/* Police Details Modal */}
+      <PoliceDetailsModal
+        police={selectedPolice}
+        open={isDetailsModalOpen}
+        onOpenChange={setIsDetailsModalOpen}
+      />
 
       {/* Pagination Controls */}
       {totalPages > 0 && (

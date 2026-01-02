@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,11 +11,21 @@ const DashboardLayout = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Memoize callbacks to prevent unnecessary sidebar re-renders
+  const handleSetExpanded = useCallback((expanded: boolean) => {
+    setIsSidebarExpanded(expanded);
+  }, []);
+
+  const handleMobileClose = useCallback(() => {
+    setIsMobileSidebarOpen(false);
+  }, []);
 
   // Close mobile sidebar on route change
   useEffect(() => {
     setIsMobileSidebarOpen(false);
-  }, [navigate]);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -66,9 +76,10 @@ const DashboardLayout = () => {
       )}>
         <DashboardSidebar
           isExpanded={isSidebarExpanded}
-          setIsExpanded={setIsSidebarExpanded}
+          setIsExpanded={handleSetExpanded}
           isMobile={isMobileSidebarOpen}
-          onMobileClose={() => setIsMobileSidebarOpen(false)}
+          onMobileClose={handleMobileClose}
+          currentPath={location.pathname}
         />
       </div>
 

@@ -1,4 +1,5 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { memo, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
@@ -25,10 +26,10 @@ interface AdminSidebarProps {
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
   basePath: string;
+  currentPath: string;
 }
 
-const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps) => {
-  const location = useLocation();
+const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const { logout, isSuperAdmin, user } = useAuth();
 
@@ -50,9 +51,9 @@ const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps
 
   const isActive = (path: string) => {
     if (path === basePath) {
-      return location.pathname === basePath;
+      return currentPath === basePath;
     }
-    return location.pathname.startsWith(path);
+    return currentPath.startsWith(path);
   };
 
   const handleLogout = () => {
@@ -155,6 +156,8 @@ const AdminSidebar = ({ isExpanded, setIsExpanded, basePath }: AdminSidebarProps
       </div>
     </aside>
   );
-};
+});
+
+AdminSidebar.displayName = 'AdminSidebar';
 
 export default AdminSidebar;

@@ -59,7 +59,8 @@ interface Admin {
 
 const AdminsManagement = () => {
   const [admins, setAdmins] = useState<Admin[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -86,7 +87,8 @@ const AdminsManagement = () => {
 
   const { toast } = useToast();
 
-  const fetchAdmins = useCallback(async () => {
+  const fetchAdmins = useCallback(async (isInitial = false) => {
+    if (isInitial) setInitialLoading(true);
     setIsLoading(true);
     try {
       const response = await adminAPI.getAllAdmins({
@@ -94,9 +96,9 @@ const AdminsManagement = () => {
         limit: 10,
         search: debouncedSearchTerm || undefined,
       });
-      setAdmins(response.data.data);
-      setTotalPages(response.data.meta.totalPages);
-      setTotalItems(response.data.meta.total);
+      setAdmins(response.data?.data || []);
+      setTotalPages(response.data?.meta?.totalPages || 1);
+      setTotalItems(response.data?.meta?.total || 0);
     } catch {
       toast({
         title: "Error",
@@ -105,12 +107,23 @@ const AdminsManagement = () => {
       });
     } finally {
       setIsLoading(false);
+      setInitialLoading(false);
     }
   }, [toast, page, debouncedSearchTerm]);
 
+  // Initial fetch
   useEffect(() => {
-    fetchAdmins();
-  }, [fetchAdmins]);
+    fetchAdmins(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch on pagination/search change
+  useEffect(() => {
+    if (!initialLoading) {
+      fetchAdmins(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearchTerm]);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -193,7 +206,7 @@ const AdminsManagement = () => {
     });
   };
 
-  if (isLoading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>

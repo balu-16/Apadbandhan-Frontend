@@ -285,7 +285,7 @@ export const adminAPI = {
 
   // Device generation (Admin/SuperAdmin)
   generateDevices: (count: number) => api.post('/admin/devices/generate', { count }),
-  getAllQrCodes: (params?: PaginationParams) => 
+  getAllQrCodes: (params?: PaginationParams & { status?: string }) => 
     api.get('/admin/devices/qrcodes', { params }),
   getQrCodesStats: () => api.get('/admin/devices/qrcodes/stats'),
 
