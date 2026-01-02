@@ -176,7 +176,7 @@ interface DeviceDetailsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const LOCATION_REFRESH_INTERVAL = 20000; // 20 seconds
+const LOCATION_REFRESH_INTERVAL = 10000; // 10 seconds
 
 const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalProps) => {
   const { toast } = useToast();
@@ -597,7 +597,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                 {device.status === 'online' && (
                   <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30 text-xs">
                     <RefreshCw className={cn("w-3 h-3 mr-1", isRefreshing && "animate-spin")} />
-                    <span className="hidden sm:inline">Auto-refresh: </span>20s
+                    <span className="hidden sm:inline">Auto-refresh: </span>10s
                   </Badge>
                 )}
                 {lastRefreshTime && (
