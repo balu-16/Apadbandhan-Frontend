@@ -37,6 +37,7 @@ import {
   Radio
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
 
 interface AxiosErrorLike {
   response?: {
@@ -600,8 +601,13 @@ const HospitalSettings = () => {
         </div>
       </section>
 
+      {/* Push Notifications */}
+      <section className="mb-6 animate-fade-up" style={{ animationDelay: "0.35s" }}>
+        <PushNotificationManager />
+      </section>
+
       {/* Logout Section */}
-      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.35s" }}>
+      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.4s" }}>
         <h2 className="text-xl font-bold text-foreground mb-2 flex items-center gap-2">
           <LogOut className="w-5 h-5 text-primary" />
           Session
@@ -613,7 +619,7 @@ const HospitalSettings = () => {
       </section>
 
       {/* Danger Zone */}
-      <section className="bg-destructive/5 border border-destructive/20 rounded-3xl p-6 lg:p-8 animate-fade-up" style={{ animationDelay: "0.4s" }}>
+      <section className="bg-destructive/5 border border-destructive/20 rounded-3xl p-6 lg:p-8 animate-fade-up" style={{ animationDelay: "0.45s" }}>
         <h2 className="text-xl font-bold text-destructive mb-2 flex items-center gap-2">
           <AlertTriangle className="w-5 h-5" />
           Danger Zone

@@ -610,4 +610,56 @@ export const systemConfigAPI = {
   }) => api.patch<SystemConfig>('/system-config', data),
 };
 
+// Push Notifications API
+export const pushAPI = {
+  // Get VAPID public key (no auth required)
+  getVapidPublicKey: () => api.get<{ publicKey: string }>('/push/vapid-public-key'),
+
+  // Subscribe to push notifications
+  subscribe: (data: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+    userAgent?: string;
+  }) => api.post('/push/subscribe', data),
+
+  // Unsubscribe from push notifications
+  unsubscribe: (endpoint: string) => api.delete('/push/unsubscribe', { data: { endpoint } }),
+
+  // Unsubscribe from all devices
+  unsubscribeAll: () => api.delete('/push/unsubscribe-all'),
+
+  // Get all subscriptions for current user
+  getSubscriptions: () => api.get('/push/subscriptions'),
+
+  // Send test notification to self
+  sendTest: () => api.post('/push/test'),
+
+  // Admin: Send notification to specific user
+  notifyUser: (userId: string, notification: {
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
+  }) => api.post(`/push/notify/${userId}`, notification),
+
+  // Admin: Send notification to multiple users
+  notifyMultiple: (userIds: string[], notification: {
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
+  }) => api.post('/push/notify-multiple', { userIds, notification }),
+
+  // SuperAdmin: Broadcast to all users
+  broadcast: (notification: {
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
+  }) => api.post('/push/broadcast', notification),
+};
+
 export default api;
