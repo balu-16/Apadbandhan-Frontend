@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   Loader2
 } from "lucide-react";
-import { devicesAPI, alertsAPI } from "@/services/api";
+import { devicesAPI, alertsAPI, sosAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface AxiosErrorLike {
@@ -64,7 +64,7 @@ interface DashboardStats {
   deviceCount: number;
   onlineDevices: number;
   alertsCount: number;
-  hasInsurance: boolean;
+  sosCount: number;
   locationEnabled: boolean;
 }
 
@@ -81,7 +81,7 @@ const DashboardHome = () => {
     deviceCount: 0,
     onlineDevices: 0,
     alertsCount: 0,
-    hasInsurance: false,
+    sosCount: 0,
     locationEnabled: true,
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -96,30 +96,22 @@ const DashboardHome = () => {
           return;
         }
 
-        // Fetch devices
-        const devicesResponse = await devicesAPI.getAll();
+        // Fetch devices, alert stats, and SOS count in parallel
+        const [devicesResponse, alertsResponse, sosResponse] = await Promise.all([
+          devicesAPI.getAll().catch(() => ({ data: [] })),
+          alertsAPI.getCombinedStats().catch(() => ({ data: { alerts: { total: 0 } } })),
+          sosAPI.getCount().catch(() => ({ data: { total: 0 } })),
+        ]);
+
         const devices: Device[] = devicesResponse.data || [];
-
-        // Fetch alert stats
-        let alertStats = { total: 0 };
-        try {
-          const alertsResponse = await alertsAPI.getCombinedStats();
-          alertStats = alertsResponse.data;
-        } catch (e) {
-          // Alerts API might not be ready
-          console.log('Could not fetch alerts stats');
-        }
-
-        // Check if any device has insurance
-        const hasInsurance = devices.some((d: Device) =>
-          d.healthInsurance || d.vehicleInsurance || d.termInsurance
-        );
+        const alertStats = alertsResponse.data?.alerts || { total: 0 };
+        const sosStats = sosResponse.data || { total: 0 };
 
         setStats({
           deviceCount: devices.length,
           onlineDevices: devices.filter((d: Device) => d.status === 'online').length,
           alertsCount: alertStats.total || 0,
-          hasInsurance,
+          sosCount: sosStats.total || 0,
           locationEnabled: user?.locationTracking ?? true,
         });
       } catch (error: unknown) {
@@ -212,10 +204,10 @@ const DashboardHome = () => {
             isLoading={isLoading}
           />
           <StatCard
-            icon={FileText}
-            title="Insurance Details"
-            value={stats.hasInsurance ? "Stored" : "Not Set"}
-            description={stats.hasInsurance ? "Insurance details linked" : "Add insurance to your devices"}
+            icon={AlertTriangle}
+            title="SOS Sent"
+            value={stats.sosCount}
+            description="Total emergency SOS triggered"
             delay="0.5s"
             isLoading={isLoading}
           />

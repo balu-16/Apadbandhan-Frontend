@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { devicesAPI, qrCodesAPI } from "@/services/api";
 import QRScanner from "@/components/QRScanner";
+import { useLocationPermissionCheck } from "@/components/LocationPermissionModal";
 
 interface AxiosErrorLike {
   response?: {
@@ -62,12 +63,20 @@ const relations = ["Father", "Mother", "Brother", "Sister", "Spouse", "Son", "Da
 const AddDevice = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { permissionStatus, checkAndRequestPermission, PermissionModal } = useLocationPermissionCheck();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const [isAnimating, setIsAnimating] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Check location permission on mount - needed for device tracking on map
+  useEffect(() => {
+    if (permissionStatus !== 'granted') {
+      checkAndRequestPermission('device');
+    }
+  }, []);
 
   // Step 1: QR Scanner
   const [deviceCode, setDeviceCode] = useState("");
@@ -345,6 +354,9 @@ const AddDevice = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {/* Location Permission Modal */}
+      {PermissionModal}
+      
       {/* Progress Steps */}
       <div className="mb-8 animate-fade-up">
         <div className="flex items-center justify-between">

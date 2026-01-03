@@ -547,6 +547,10 @@ export const sosAPI = {
   getHistory: () =>
     api.get('/sos/history'),
 
+  // Get user's SOS count (for dashboard stats)
+  getCount: () =>
+    api.get<{ total: number; pending: number; resolved: number }>('/sos/count'),
+
   // Get all active SOS events (admin/responder)
   getActive: () =>
     api.get('/sos/active'),
@@ -660,6 +664,150 @@ export const pushAPI = {
     url?: string;
     tag?: string;
   }) => api.post('/push/broadcast', notification),
+};
+
+// Notification Center API (SuperAdmin only)
+export interface NotificationTemplate {
+  _id: string;
+  code: string;
+  name: string;
+  category: string;
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  body: string;
+  icon: string;
+  url: string;
+  targetRoles: string[];
+  variables: string[];
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationLog {
+  _id: string;
+  type: 'test' | 'template' | 'custom' | 'broadcast';
+  templateId?: string;
+  templateCode?: string;
+  title: string;
+  body: string;
+  icon?: string;
+  url?: string;
+  sentBy: string;
+  sentByName?: string;
+  targetRole?: string;
+  targetFilters?: Record<string, any>;
+  targetUserIds: string[];
+  targetCount: number;
+  successCount: number;
+  failedCount: number;
+  status: 'pending' | 'sent' | 'partial' | 'failed';
+  variables?: Record<string, string>;
+  errors: Array<{ endpoint: string; error: string; timestamp: string }>;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FilterOption {
+  field: string;
+  label: string;
+  type: 'text' | 'select' | 'boolean';
+  options?: string[];
+}
+
+export interface RoleUser {
+  _id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  isActive?: boolean;
+  extra?: string;
+}
+
+export interface SendTemplateNotificationData {
+  templateCode: string;
+  targetRole: string;
+  filters?: Record<string, any>;
+  variables?: Record<string, string>;
+  selectedUserIds?: string[];
+}
+
+export interface SendCustomNotificationData {
+  title: string;
+  body: string;
+  icon?: string;
+  url?: string;
+  targetRole: string;
+  filters?: Record<string, any>;
+  selectedUserIds?: string[];
+}
+
+export const notificationCenterAPI = {
+  // Get all templates
+  getTemplates: (category?: string, isActive?: boolean) =>
+    api.get<{ count: number; templates: NotificationTemplate[] }>('/notification-center/templates', {
+      params: { category, isActive },
+    }),
+
+  // Get template by code
+  getTemplateByCode: (code: string) =>
+    api.get<NotificationTemplate>(`/notification-center/templates/${code}`),
+
+  // Get filter options for a role
+  getFilterOptions: (role: string) =>
+    api.get<{ role: string; filters: FilterOption[] }>(`/notification-center/filters/${role}`),
+
+  // Get all users of a specific role
+  getUsersByRole: (role: string) =>
+    api.get<{ role: string; count: number; users: RoleUser[] }>(`/notification-center/users/${role}`),
+
+  // Preview target count
+  previewTargetCount: (data: { targetRole: string; filters?: Record<string, any> }) =>
+    api.post<{ count: number; breakdown: Record<string, number> }>('/notification-center/preview', data),
+
+  // Send test notification
+  sendTestNotification: (data?: { title?: string; body?: string }) =>
+    api.post<{ success: boolean; message: string }>('/notification-center/send/test', data || {}),
+
+  // Send template notification
+  sendTemplateNotification: (data: {
+    templateCode: string;
+    targetRole: string;
+    filters?: Record<string, any>;
+    variables?: Record<string, string>;
+    selectedUserIds?: string[];
+  }) =>
+    api.post<{ success: boolean; message: string; stats: { total: number; success: number; failed: number } }>(
+      '/notification-center/send/template',
+      data
+    ),
+
+  // Send custom notification
+  sendCustomNotification: (data: {
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    targetRole: string;
+    filters?: Record<string, any>;
+    selectedUserIds?: string[];
+  }) =>
+    api.post<{ success: boolean; message: string; stats: { total: number; success: number; failed: number } }>(
+      '/notification-center/send/custom',
+      data
+    ),
+
+  // Get notification logs
+  getLogs: (params?: { page?: number; limit?: number; status?: string; type?: string }) =>
+    api.get<{
+      data: NotificationLog[];
+      meta: { total: number; page: number; limit: number; totalPages: number };
+    }>('/notification-center/logs', { params }),
+
+  // Get log by ID
+  getLogById: (id: string) => api.get<NotificationLog>(`/notification-center/logs/${id}`),
 };
 
 export default api;

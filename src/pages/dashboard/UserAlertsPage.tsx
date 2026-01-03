@@ -107,22 +107,25 @@ const AlertDetailsModal = ({ alert, open, onOpenChange }: { alert: Alert | null;
   );
 };
 
+type SourceFilter = 'all' | 'alert' | 'sos';
+
 const UserAlertsPage = () => {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchUserAlerts = useCallback(async (showRefresh = false) => {
+  const fetchUserAlerts = useCallback(async (showRefresh = false, source: SourceFilter = 'all') => {
     if (showRefresh) setIsRefreshing(true);
     else setIsLoading(true);
 
     try {
       // Fetch combined alerts (both SOS and device-triggered alerts)
-      const response = await alertsAPI.getCombined('all');
+      const response = await alertsAPI.getCombined(source);
       const combinedAlerts = Array.isArray(response.data) ? response.data : [];
 
       // Map to standard Alert format
@@ -154,8 +157,12 @@ const UserAlertsPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchUserAlerts();
-  }, [fetchUserAlerts]);
+    fetchUserAlerts(false, sourceFilter);
+  }, [sourceFilter]);
+
+  const handleSourceFilterChange = (source: SourceFilter) => {
+    setSourceFilter(source);
+  };
 
   const handleViewAlert = (alert: Alert) => {
     setSelectedAlert(alert);
@@ -174,6 +181,8 @@ const UserAlertsPage = () => {
     total: alerts.length,
     pending: alerts.filter(a => a.status !== 'resolved').length,
     resolved: alerts.filter(a => a.status === 'resolved').length,
+    alerts: alerts.filter(a => a.source === 'alert').length,
+    sos: alerts.filter(a => a.source === 'sos').length,
   };
 
   if (isLoading) {
@@ -198,23 +207,54 @@ const UserAlertsPage = () => {
         <Button
           variant="outline"
           size="icon"
-          onClick={() => fetchUserAlerts(true)}
+          onClick={() => fetchUserAlerts(true, sourceFilter)}
           disabled={isRefreshing}
         >
           <RefreshCw className={cn("w-5 h-5", isRefreshing && "animate-spin")} />
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Search by type or status..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-12"
-        />
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search by type or status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-12"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={sourceFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSourceFilterChange('all')}
+            className="gap-1"
+          >
+            <AlertTriangle className="w-4 h-4" />
+            All
+          </Button>
+          <Button
+            variant={sourceFilter === 'alert' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSourceFilterChange('alert')}
+            className={cn("gap-1", sourceFilter === 'alert' && "bg-orange-500 hover:bg-orange-600")}
+          >
+            <Car className="w-4 h-4" />
+            Accidents
+          </Button>
+          <Button
+            variant={sourceFilter === 'sos' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSourceFilterChange('sos')}
+            className={cn("gap-1", sourceFilter === 'sos' && "bg-purple-500 hover:bg-purple-600")}
+          >
+            <Siren className="w-4 h-4" />
+            SOS
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

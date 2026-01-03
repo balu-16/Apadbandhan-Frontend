@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LocationTrackingProvider } from "@/contexts/LocationTrackingContext";
 import { ProtectedRoute, PublicRoute } from "@/components/auth";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { LocationPermissionModal } from "@/components/LocationPermissionModal";
 import { Loader2 } from "lucide-react";
 
 // Eager-loaded pages (critical path - landing, auth)
@@ -38,6 +39,7 @@ const HospitalManagement = lazy(() => import("./pages/admin/HospitalManagement")
 const AllDevices = lazy(() => import("./pages/admin/AllDevices"));
 const PartnerRequests = lazy(() => import("./pages/admin/PartnerRequests"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const NotificationCenter = lazy(() => import("./pages/admin/NotificationCenter"));
 
 // Lazy-loaded police pages
 const PoliceLayout = lazy(() => import("./components/police/PoliceLayout"));
@@ -73,6 +75,7 @@ const App = () => (
           <TooltipProvider>
           <Toaster />
           <Sonner />
+          <LocationPermissionModal />
           <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -122,6 +125,7 @@ const App = () => (
                     <Route path="devices" element={<AllDevices />} />
                     <Route path="requests" element={<PartnerRequests />} />
                     <Route path="alerts" element={<AlertsPage portalType="superadmin" />} />
+                    <Route path="notifications" element={<NotificationCenter />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Route>
                 </Route>

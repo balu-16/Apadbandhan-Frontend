@@ -4,3 +4,4 @@ export { default as AdminsManagement } from './AdminsManagement';
 export { default as PoliceManagement } from './PoliceManagement';
 export { default as HospitalManagement } from './HospitalManagement';
 export { default as AllDevices } from './AllDevices';
+export { default as NotificationCenter } from './NotificationCenter';

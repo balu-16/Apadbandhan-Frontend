@@ -75,34 +75,19 @@ export function PushNotificationManager() {
 
         <div className="flex flex-col sm:flex-row gap-3">
           {isSubscribed ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={unsubscribe}
-                disabled={isLoading}
-                className="flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <BellOff className="h-4 w-4" />
-                )}
-                Unsubscribe
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={sendTestNotification}
-                disabled={isLoading}
-                className="flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <BellRing className="h-4 w-4" />
-                )}
-                Send Test Notification
-              </Button>
-            </>
+            <Button
+              variant="outline"
+              onClick={unsubscribe}
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <BellOff className="h-4 w-4" />
+              )}
+              Unsubscribe
+            </Button>
           ) : (
             <Button
               onClick={subscribe}

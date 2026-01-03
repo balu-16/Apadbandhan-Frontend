@@ -11,7 +11,8 @@ import {
   Shield,
   Cross,
   FileText,
-  Settings
+  Settings,
+  Send
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -42,6 +43,7 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
     { icon: Smartphone, label: "Devices", path: `${basePath}/devices` },
     { icon: FileText, label: "Requests", path: `${basePath}/requests` },
     { icon: Bell, label: "Alerts", path: `${basePath}/alerts` },
+    { icon: Send, label: "Notifications", path: `${basePath}/notifications`, superAdminOnly: true },
     { icon: Settings, label: "Settings", path: `${basePath}/settings` },
   ];
 
