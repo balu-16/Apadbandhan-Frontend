@@ -35,7 +35,8 @@ import {
   Building2,
   Stethoscope,
   Pencil,
-  Eye
+  Eye,
+  RefreshCw
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,17 +62,26 @@ interface HospitalUser {
   phone: string;
   role: string;
   isActive: boolean;
+  isVerified?: boolean;
   createdAt: string;
   hospitalPreference?: string;
   hospitalType?: 'government' | 'private';
   specialization?: string;
+  registrationNumber?: string;
+  numberOfBeds?: number;
+  emergencyServices?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   onDuty?: boolean;
   lastLoginAt?: string;
+  accidentAlerts?: boolean;
+  smsNotifications?: boolean;
+  locationTracking?: boolean;
   baseLocation?: {
-    latitude: number;
-    longitude: number;
-    address?: string;
+    type?: string;
+    coordinates?: [number, number];
   };
 }
 
@@ -108,8 +118,15 @@ const HospitalManagement = () => {
     email: "",
     phone: "",
     hospitalPreference: "",
+    hospitalType: "" as "" | "government" | "private",
     specialization: "",
+    registrationNumber: "",
+    numberOfBeds: "",
+    emergencyServices: "",
     address: "",
+    city: "",
+    state: "",
+    pincode: "",
     latitude: "",
     longitude: "",
   });
@@ -189,8 +206,15 @@ const HospitalManagement = () => {
         email: newHospital.email,
         phone: newHospital.phone,
         hospitalPreference: newHospital.hospitalPreference,
+        hospitalType: newHospital.hospitalType || undefined,
         specialization: newHospital.specialization || undefined,
+        registrationNumber: newHospital.registrationNumber || undefined,
+        numberOfBeds: newHospital.numberOfBeds ? parseInt(newHospital.numberOfBeds) : undefined,
+        emergencyServices: newHospital.emergencyServices || undefined,
         address: newHospital.address || undefined,
+        city: newHospital.city || undefined,
+        state: newHospital.state || undefined,
+        pincode: newHospital.pincode || undefined,
         latitude: parseFloat(newHospital.latitude),
         longitude: parseFloat(newHospital.longitude),
       });
@@ -201,8 +225,11 @@ const HospitalManagement = () => {
       setIsAddDialogOpen(false);
       setNewHospital({
         fullName: "", email: "", phone: "",
-        hospitalPreference: "", specialization: "",
-        address: "", latitude: "", longitude: ""
+        hospitalPreference: "", hospitalType: "",
+        specialization: "", registrationNumber: "",
+        numberOfBeds: "", emergencyServices: "",
+        address: "", city: "", state: "", pincode: "",
+        latitude: "", longitude: ""
       });
       fetchHospitalUsers();
     } catch (error: unknown) {
@@ -290,8 +317,8 @@ const HospitalManagement = () => {
       hospitalPreference: hospital.hospitalPreference || "",
       specialization: hospital.specialization || "",
       address: hospital.address || "",
-      latitude: hospital.baseLocation?.latitude?.toString() || "",
-      longitude: hospital.baseLocation?.longitude?.toString() || "",
+      latitude: hospital.baseLocation?.coordinates?.[1]?.toString() || "",
+      longitude: hospital.baseLocation?.coordinates?.[0]?.toString() || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -329,12 +356,23 @@ const HospitalManagement = () => {
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Hospital
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => fetchHospitalUsers()}
+              disabled={isLoading}
+              title="Refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
-          </DialogTrigger>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Hospital
+              </Button>
+            </DialogTrigger>
+          </div>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Hospital Account</DialogTitle>
@@ -394,6 +432,31 @@ const HospitalManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="hospitalType">Hospital Type *</Label>
+                    <select
+                      id="hospitalType"
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                      value={newHospital.hospitalType}
+                      onChange={(e) => setNewHospital({ ...newHospital, hospitalType: e.target.value as "" | "government" | "private" })}
+                    >
+                      <option value="">Select type</option>
+                      <option value="government">Government Hospital</option>
+                      <option value="private">Private Hospital</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">Used to match with users' hospital preferences</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="registrationNumber">Registration Number</Label>
+                    <Input
+                      id="registrationNumber"
+                      placeholder="Official registration number"
+                      value={newHospital.registrationNumber}
+                      onChange={(e) => setNewHospital({ ...newHospital, registrationNumber: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="specialization">Specialization</Label>
                     <Input
                       id="specialization"
@@ -403,8 +466,36 @@ const HospitalManagement = () => {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numberOfBeds">Number of Beds</Label>
+                    <Input
+                      id="numberOfBeds"
+                      type="number"
+                      placeholder="e.g., 100"
+                      value={newHospital.numberOfBeds}
+                      onChange={(e) => setNewHospital({ ...newHospital, numberOfBeds: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="emergencyServices">Emergency Services</Label>
+                    <Input
+                      id="emergencyServices"
+                      placeholder="e.g., ICU, Trauma, Ambulance"
+                      value={newHospital.emergencyServices}
+                      onChange={(e) => setNewHospital({ ...newHospital, emergencyServices: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> Address Details
+                </h3>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Hospital Address</Label>
+                  <Label htmlFor="address">Hospital Address *</Label>
                   <Textarea
                     id="address"
                     placeholder="Enter complete hospital address"
@@ -412,6 +503,35 @@ const HospitalManagement = () => {
                     onChange={(e) => setNewHospital({ ...newHospital, address: e.target.value })}
                     rows={2}
                   />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City *</Label>
+                    <Input
+                      id="city"
+                      placeholder="City name"
+                      value={newHospital.city}
+                      onChange={(e) => setNewHospital({ ...newHospital, city: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State *</Label>
+                    <Input
+                      id="state"
+                      placeholder="State name"
+                      value={newHospital.state}
+                      onChange={(e) => setNewHospital({ ...newHospital, state: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pincode">Pincode *</Label>
+                    <Input
+                      id="pincode"
+                      placeholder="6-digit pincode"
+                      value={newHospital.pincode}
+                      onChange={(e) => setNewHospital({ ...newHospital, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                    />
+                  </div>
                 </div>
               </div>
 

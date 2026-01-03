@@ -34,7 +34,8 @@ import {
   BadgeCheck,
   Building,
   Pencil,
-  Eye
+  Eye,
+  RefreshCw
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -99,9 +100,15 @@ const PoliceManagement = () => {
     email: "",
     phone: "",
     stationName: "",
+    stationCode: "",
     badgeNumber: "",
     jurisdiction: "",
     address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    latitude: "",
+    longitude: "",
   });
 
   const { toast } = useToast();
@@ -170,9 +177,15 @@ const PoliceManagement = () => {
         email: newPolice.email,
         phone: newPolice.phone,
         stationName: newPolice.stationName,
+        stationCode: newPolice.stationCode || undefined,
         badgeNumber: newPolice.badgeNumber || undefined,
         jurisdiction: newPolice.jurisdiction || undefined,
         address: newPolice.address || undefined,
+        city: newPolice.city || undefined,
+        state: newPolice.state || undefined,
+        pincode: newPolice.pincode || undefined,
+        latitude: newPolice.latitude ? parseFloat(newPolice.latitude) : undefined,
+        longitude: newPolice.longitude ? parseFloat(newPolice.longitude) : undefined,
       });
       toast({
         title: "Success",
@@ -181,8 +194,10 @@ const PoliceManagement = () => {
       setIsAddDialogOpen(false);
       setNewPolice({
         fullName: "", email: "", phone: "",
-        stationName: "", badgeNumber: "",
-        jurisdiction: "", address: ""
+        stationName: "", stationCode: "", badgeNumber: "",
+        jurisdiction: "", address: "",
+        city: "", state: "", pincode: "",
+        latitude: "", longitude: ""
       });
       fetchPoliceUsers();
     } catch (error: unknown) {
@@ -306,14 +321,24 @@ const PoliceManagement = () => {
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Police
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fetchPoliceUsers()}
+            disabled={isLoading}
+            title="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Police
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Police Account</DialogTitle>
               <DialogDescription>
@@ -372,6 +397,17 @@ const PoliceManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="stationCode">Station Code</Label>
+                    <Input
+                      id="stationCode"
+                      placeholder="e.g., PS-001"
+                      value={newPolice.stationCode}
+                      onChange={(e) => setNewPolice({ ...newPolice, stationCode: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="badgeNumber" className="flex items-center gap-1">
                       <BadgeCheck className="h-3 w-3" /> Badge Number
                     </Label>
@@ -382,20 +418,25 @@ const PoliceManagement = () => {
                       onChange={(e) => setNewPolice({ ...newPolice, badgeNumber: e.target.value })}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jurisdiction">Jurisdiction Area</Label>
+                    <Input
+                      id="jurisdiction"
+                      placeholder="e.g., Central District, North Zone"
+                      value={newPolice.jurisdiction}
+                      onChange={(e) => setNewPolice({ ...newPolice, jurisdiction: e.target.value })}
+                    />
+                  </div>
                 </div>
+              </div>
+
+              {/* Address Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> Address Details
+                </h3>
                 <div className="space-y-2">
-                  <Label htmlFor="jurisdiction">Jurisdiction Area</Label>
-                  <Input
-                    id="jurisdiction"
-                    placeholder="e.g., Central District, North Zone"
-                    value={newPolice.jurisdiction}
-                    onChange={(e) => setNewPolice({ ...newPolice, jurisdiction: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="address" className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> Station Address
-                  </Label>
+                  <Label htmlFor="address">Station Address *</Label>
                   <Textarea
                     id="address"
                     placeholder="Enter complete station address"
@@ -403,6 +444,72 @@ const PoliceManagement = () => {
                     onChange={(e) => setNewPolice({ ...newPolice, address: e.target.value })}
                     rows={2}
                   />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City *</Label>
+                    <Input
+                      id="city"
+                      placeholder="City name"
+                      value={newPolice.city}
+                      onChange={(e) => setNewPolice({ ...newPolice, city: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State *</Label>
+                    <Input
+                      id="state"
+                      placeholder="State name"
+                      value={newPolice.state}
+                      onChange={(e) => setNewPolice({ ...newPolice, state: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pincode">Pincode *</Label>
+                    <Input
+                      id="pincode"
+                      placeholder="6-digit pincode"
+                      value={newPolice.pincode}
+                      onChange={(e) => setNewPolice({ ...newPolice, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Coordinates Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> Location Coordinates
+                </h3>
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg mb-2">
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Important:</strong> Exact coordinates are required for emergency alert routing.
+                    You can find coordinates using Google Maps (right-click on location).
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="latitude">Latitude *</Label>
+                    <Input
+                      id="latitude"
+                      type="number"
+                      step="any"
+                      placeholder="e.g., 28.6139"
+                      value={newPolice.latitude}
+                      onChange={(e) => setNewPolice({ ...newPolice, latitude: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="longitude">Longitude *</Label>
+                    <Input
+                      id="longitude"
+                      type="number"
+                      step="any"
+                      placeholder="e.g., 77.2090"
+                      value={newPolice.longitude}
+                      onChange={(e) => setNewPolice({ ...newPolice, longitude: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -417,6 +524,7 @@ const PoliceManagement = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card className="bg-card border-border/50">

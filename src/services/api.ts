@@ -240,18 +240,30 @@ export const adminAPI = {
     email: string;
     phone: string;
     stationName?: string;
+    stationCode?: string;
     badgeNumber?: string;
     jurisdiction?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    latitude?: number;
+    longitude?: number;
   }) => api.post('/admin/police-users', data),
   deletePoliceUser: (id: string) => api.delete(`/admin/police-users/${id}`),
   updatePoliceUser: (id: string, data: {
     fullName?: string;
     email?: string;
     stationName?: string;
+    stationCode?: string;
     badgeNumber?: string;
     jurisdiction?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    latitude?: number;
+    longitude?: number;
   }) => api.patch(`/admin/police-users/${id}`, data),
 
   // Hospital user management (SuperAdmin only)
@@ -262,8 +274,15 @@ export const adminAPI = {
     email: string;
     phone: string;
     hospitalPreference?: string;
+    hospitalType?: 'government' | 'private';
     specialization?: string;
+    registrationNumber?: string;
+    numberOfBeds?: number;
+    emergencyServices?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
     latitude?: number;
     longitude?: number;
   }) => api.post('/admin/hospital-users', data),
@@ -272,8 +291,15 @@ export const adminAPI = {
     fullName?: string;
     email?: string;
     hospitalPreference?: string;
+    hospitalType?: 'government' | 'private';
     specialization?: string;
+    registrationNumber?: string;
+    numberOfBeds?: number;
+    emergencyServices?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
     latitude?: number;
     longitude?: number;
   }) => api.patch(`/admin/hospital-users/${id}`, data),

@@ -44,17 +44,24 @@ interface PoliceData {
   phone: string;
   role: string;
   isActive: boolean;
+  isVerified?: boolean;
   onDuty?: boolean;
   createdAt: string;
   lastLoginAt?: string;
   stationName?: string;
+  stationCode?: string;
   badgeNumber?: string;
   jurisdiction?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  accidentAlerts?: boolean;
+  smsNotifications?: boolean;
+  locationTracking?: boolean;
   baseLocation?: {
-    latitude: number;
-    longitude: number;
-    address?: string;
+    type?: string;
+    coordinates?: [number, number]; // [longitude, latitude]
   };
 }
 
@@ -219,7 +226,7 @@ const PoliceDetailsModal = ({ police, open, onOpenChange }: PoliceDetailsModalPr
               Station Details
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+              <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3 col-span-2">
                 <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
                   <Building className="w-5 h-5 text-blue-500" />
                 </div>
@@ -228,6 +235,17 @@ const PoliceDetailsModal = ({ police, open, onOpenChange }: PoliceDetailsModalPr
                   <p className="font-medium text-sm">{police.stationName || "N/A"}</p>
                 </div>
               </div>
+              {police.stationCode && (
+                <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-indigo-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">Station Code</p>
+                    <p className="font-medium text-sm font-mono">{police.stationCode}</p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
                   <BadgeCheck className="w-5 h-5 text-amber-500" />
@@ -237,33 +255,65 @@ const PoliceDetailsModal = ({ police, open, onOpenChange }: PoliceDetailsModalPr
                   <p className="font-medium text-sm font-mono">{police.badgeNumber || "N/A"}</p>
                 </div>
               </div>
+              {police.jurisdiction && (
+                <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3 col-span-2">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-purple-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">Jurisdiction Area</p>
+                    <p className="font-medium">{police.jurisdiction}</p>
+                  </div>
+                </div>
+              )}
             </div>
-            {police.jurisdiction && (
-              <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3 mt-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-purple-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Jurisdiction Area</p>
-                  <p className="font-medium">{police.jurisdiction}</p>
-                </div>
-              </div>
-            )}
-            {police.address && (
-              <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3 mt-3">
-                <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-rose-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Station Address</p>
-                  <p className="font-medium text-sm">{police.address}</p>
-                </div>
-              </div>
-            )}
           </div>
 
+          {/* Address Details */}
+          {(police.address || police.city || police.state || police.pincode) && (
+            <div className="bg-muted/30 rounded-xl p-4">
+              <h3 className="font-semibold text-foreground mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Address Details
+              </h3>
+              <div className="space-y-3">
+                {police.address && (
+                  <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+                    <div className="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-rose-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">Street Address</p>
+                      <p className="font-medium text-sm">{police.address}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">City</p>
+                      <p className="font-medium text-sm">{police.city || "N/A"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">State</p>
+                      <p className="font-medium text-sm">{police.state || "N/A"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">Pincode</p>
+                      <p className="font-medium text-sm font-mono">{police.pincode || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Base Location */}
-          {police.baseLocation && police.baseLocation.latitude != null && police.baseLocation.longitude != null && (
+          {police.baseLocation && police.baseLocation.coordinates && police.baseLocation.coordinates.length === 2 && (
             <div className="bg-muted/30 rounded-xl p-4">
               <h3 className="font-semibold text-foreground mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
                 <Navigation className="w-4 h-4" />
@@ -275,13 +325,10 @@ const PoliceDetailsModal = ({ police, open, onOpenChange }: PoliceDetailsModalPr
                     <MapPin className="w-5 h-5 text-cyan-500" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Coordinates</p>
+                    <p className="text-xs text-muted-foreground">Coordinates (Lat, Long)</p>
                     <p className="font-medium font-mono text-sm">
-                      {police.baseLocation.latitude.toFixed(6)}, {police.baseLocation.longitude.toFixed(6)}
+                      {police.baseLocation.coordinates[1].toFixed(6)}, {police.baseLocation.coordinates[0].toFixed(6)}
                     </p>
-                    {police.baseLocation.address && (
-                      <p className="text-xs text-muted-foreground mt-1">{police.baseLocation.address}</p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -310,6 +357,67 @@ const PoliceDetailsModal = ({ police, open, onOpenChange }: PoliceDetailsModalPr
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Last Login</p>
                   <p className="font-medium text-sm">{formatDate(police.lastLoginAt)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+                <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  {police.isVerified ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-gray-500" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Verification</p>
+                  <p className="font-medium text-sm">{police.isVerified ? "Verified" : "Not Verified"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-background/50 rounded-lg p-3">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                  <Navigation className="w-5 h-5 text-cyan-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Duty Status</p>
+                  <p className="font-medium text-sm">{police.onDuty ? "On Duty" : "Off Duty"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Notification Settings */}
+          <div className="bg-muted/30 rounded-xl p-4">
+            <h3 className="font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">
+              Notification Settings
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex items-center gap-2 bg-background/50 rounded-lg p-3">
+                <div className={cn(
+                  "w-3 h-3 rounded-full",
+                  police.accidentAlerts !== false ? "bg-green-500" : "bg-gray-400"
+                )} />
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Accident Alerts</p>
+                  <p className="font-medium text-sm">{police.accidentAlerts !== false ? "Enabled" : "Disabled"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-background/50 rounded-lg p-3">
+                <div className={cn(
+                  "w-3 h-3 rounded-full",
+                  police.smsNotifications !== false ? "bg-green-500" : "bg-gray-400"
+                )} />
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">SMS Notifications</p>
+                  <p className="font-medium text-sm">{police.smsNotifications !== false ? "Enabled" : "Disabled"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-background/50 rounded-lg p-3">
+                <div className={cn(
+                  "w-3 h-3 rounded-full",
+                  police.locationTracking !== false ? "bg-green-500" : "bg-gray-400"
+                )} />
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground">Location Tracking</p>
+                  <p className="font-medium text-sm">{police.locationTracking !== false ? "Enabled" : "Disabled"}</p>
                 </div>
               </div>
             </div>

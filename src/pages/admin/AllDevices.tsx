@@ -27,7 +27,8 @@ import {
   Mail,
   MapPin,
   Activity,
-  Trash2
+  Trash2,
+  RefreshCw
 } from "lucide-react";
 import { adminAPI, qrCodesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
@@ -305,14 +306,25 @@ const AllDevices = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-          <Smartphone className="h-8 w-8 text-blue-500" />
-          Devices Management
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Generate and manage device codes
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+            <Smartphone className="h-8 w-8 text-blue-500" />
+            Devices Management
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Generate and manage device codes
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => fetchData()}
+          disabled={isLoading}
+          title="Refresh"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

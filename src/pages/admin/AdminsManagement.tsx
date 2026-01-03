@@ -30,7 +30,8 @@ import {
   Mail,
   Phone,
   Calendar,
-  Shield
+  Shield,
+  RefreshCw
 } from "lucide-react";
 import { adminAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
@@ -228,13 +229,23 @@ const AdminsManagement = () => {
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 bg-orange-500 hover:bg-orange-600">
-              <Plus className="h-4 w-4" />
-              Add Admin
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fetchAdmins()}
+            disabled={isLoading}
+            title="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 bg-orange-500 hover:bg-orange-600">
+                <Plus className="h-4 w-4" />
+                Add Admin
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Admin</DialogTitle>
@@ -290,6 +301,7 @@ const AdminsManagement = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search */}
