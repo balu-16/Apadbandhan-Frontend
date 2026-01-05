@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -15,6 +15,7 @@ import {
   Send
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { alertsAPI } from "@/services/api";
 
 interface NavItem {
   icon: React.ElementType;
@@ -33,6 +34,23 @@ interface AdminSidebarProps {
 const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const { logout, isSuperAdmin, user } = useAuth();
+  const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
+
+  // Fetch pending alerts count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const response = await alertsAPI.getCombinedStats();
+        setPendingAlertsCount(response.data?.pending || 0);
+      } catch (error) {
+        console.error('Failed to fetch pending alerts count:', error);
+      }
+    };
+    fetchPendingCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Dashboard", path: basePath },
@@ -130,8 +148,18 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
               )} />
               
               {isExpanded && (
-                <span className="transition-colors duration-300 whitespace-nowrap overflow-hidden">
+                <span className="transition-colors duration-300 whitespace-nowrap overflow-hidden flex-1">
                   {item.label}
+                </span>
+              )}
+
+              {/* Pending alerts badge for Alerts menu item */}
+              {item.path === `${basePath}/alerts` && pendingAlertsCount > 0 && (
+                <span className={cn(
+                  "flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full animate-pulse",
+                  isExpanded ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
+                )}>
+                  {pendingAlertsCount > 99 ? '99+' : pendingAlertsCount}
                 </span>
               )}
             </Link>

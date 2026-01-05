@@ -67,7 +67,7 @@ const sosAlertIcon = L.divIcon({
     </div>
   `,
   iconSize: [40, 40],
-  iconAnchor: [20, 40],
+  iconAnchor: [20, 20],
 });
 
 interface EmergencyContact {

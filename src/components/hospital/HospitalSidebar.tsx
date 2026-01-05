@@ -9,7 +9,7 @@ import {
   Settings
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { alertsAPI } from "@/services/api";
+import { hospitalAPI } from "@/services/api";
 
 interface NavItem {
   icon: React.ElementType;
@@ -30,12 +30,13 @@ const HospitalSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onM
   const { logout, user } = useAuth();
   const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
 
-  // Fetch pending alerts count
+  // Fetch pending alerts count from hospital-specific API
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const response = await alertsAPI.getCombinedStats();
-        setPendingAlertsCount(response.data?.pending || 0);
+        const response = await hospitalAPI.getStats();
+        // Use pendingAlerts from hospital stats (same as alerts page)
+        setPendingAlertsCount(response.data?.pendingAlerts || response.data?.pending || 0);
       } catch (error) {
         console.error('Failed to fetch pending alerts count:', error);
       }

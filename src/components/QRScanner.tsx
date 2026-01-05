@@ -49,14 +49,35 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }: QRScannerProps) => {
           qrbox: { width: 250, height: 250 },
         },
         (decodedText) => {
-          // Validate 16-digit code
-          const cleanCode = decodedText.replace(/\s/g, '');
-          if (/^\d{16}$/.test(cleanCode)) {
+          // Extract 16-digit device code from scanned text
+          // This handles cases where QR contains URL or other data with embedded code
+          const cleanText = decodedText.replace(/\s/g, '');
+          
+          // First try exact 16-digit match
+          if (/^\d{16}$/.test(cleanText)) {
             stopScanning();
-            onScanSuccess(cleanCode);
-          } else {
-            setError('Invalid QR code. Please scan a valid 16-digit device code.');
+            onScanSuccess(cleanText);
+            return;
           }
+          
+          // Try to extract 16 consecutive digits from anywhere in the text
+          const digitMatch = cleanText.match(/\d{16}/);
+          if (digitMatch) {
+            stopScanning();
+            onScanSuccess(digitMatch[0]);
+            return;
+          }
+          
+          // Try to find device code pattern in URL format (e.g., /device/1234567890123456)
+          const urlMatch = decodedText.match(/(?:device|code|id)[\/=:]?\s*(\d{16})/i);
+          if (urlMatch) {
+            stopScanning();
+            onScanSuccess(urlMatch[1]);
+            return;
+          }
+          
+          // If no valid code found, show error
+          setError('Invalid QR code. Could not find a valid 16-digit device code.');
         },
         (errorMessage) => {
           // Ignore continuous scan errors

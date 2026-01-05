@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -10,6 +10,7 @@ import {
   LogOut
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { alertsAPI } from "@/services/api";
 
 interface NavItem {
   icon: React.ElementType;
@@ -36,6 +37,23 @@ interface DashboardSidebarProps {
 const DashboardSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onMobileClose, currentPath }: DashboardSidebarProps) => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
+
+  // Fetch pending alerts count for user's devices
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const response = await alertsAPI.getCombinedStats();
+        setPendingAlertsCount(response.data?.pending || 0);
+      } catch (error) {
+        console.error('Failed to fetch pending alerts count:', error);
+      }
+    };
+    fetchPendingCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -120,8 +138,18 @@ const DashboardSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, on
               )} />
               
               {(isExpanded || isMobile) && (
-                <span className="transition-colors duration-300 whitespace-nowrap overflow-hidden">
+                <span className="transition-colors duration-300 whitespace-nowrap overflow-hidden flex-1">
                   {item.label}
+                </span>
+              )}
+
+              {/* Pending alerts badge for Alerts menu item */}
+              {item.path === '/dashboard/alerts' && pendingAlertsCount > 0 && (
+                <span className={cn(
+                  "flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full animate-pulse",
+                  (isExpanded || isMobile) ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
+                )}>
+                  {pendingAlertsCount > 99 ? '99+' : pendingAlertsCount}
                 </span>
               )}
             </Link>

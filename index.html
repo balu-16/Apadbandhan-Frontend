@@ -43,6 +43,21 @@
       content="Real-time AIoT-powered accident detection with automated emergency alerts and rapid rescue response."
     />
     <meta name="twitter:image" content="https://www.apadhbandhav.com/logoAB.png" />
+
+    <!-- OneSignal Web Push SDK v16 -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "030f6cda-43f7-47d6-9843-2d54f4df8b9e",
+          notifyButton: {
+            enable: false,
+          },
+          allowLocalhostAsSecureOrigin: true,
+        });
+      });
+    </script>
   </head>
 
   <body>

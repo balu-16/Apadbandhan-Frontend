@@ -13,7 +13,12 @@ import {
   Loader2,
   RefreshCw,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Share2,
+  UserPlus,
+  Users,
+  X,
+  Ban
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -27,8 +32,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, formatTimeAgo } from "@/lib/utils";
-import { devicesAPI, deviceLocationsAPI, sosAPI } from "@/services/api";
+import { devicesAPI, deviceLocationsAPI, sosAPI, deviceSharingAPI, DeviceShareInfo } from "@/services/api";
 import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { useToast } from "@/hooks/use-toast";
 import DeviceDetailsModal from "@/components/devices/DeviceDetailsModal";
@@ -92,12 +106,17 @@ interface DeviceCardProps {
   device: Device;
   delay: string;
   onClick: () => void;
-  onToggleStatus: (device: Device) => void;
-  onDelete: (device: Device) => void;
-  onSOS: (device: Device) => void;
+  onToggleStatus?: (device: Device) => void;
+  onDelete?: (device: Device) => void;
+  onSOS?: (device: Device) => void;
+  onShare?: (device: Device) => void;
+  isShared?: boolean;
+  isReceived?: boolean;
+  sharedWithName?: string;
+  ownerName?: string;
 }
 
-const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete, onSOS }: DeviceCardProps) => (
+const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete, onSOS, onShare, isShared, isReceived, sharedWithName, ownerName }: DeviceCardProps) => (
   <div
     className="block animate-fade-up opacity-0"
     style={{ animationDelay: delay, animationFillMode: "forwards" }}
@@ -147,43 +166,86 @@ const DeviceCard = ({ device, delay, onClick, onToggleStatus, onDelete, onSOS }:
             <span className="hidden xs:inline">{device.status === "online" ? "Online" : "Offline"}</span>
           </div>
 
-          {/* Toggle Online/Offline */}
-          <div
-            className="flex items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Switch
-              checked={device.status === "online"}
-              onCheckedChange={() => onToggleStatus(device)}
-              className="data-[state=checked]:bg-green-500"
-            />
-          </div>
+          {/* Only show controls for owned devices, not received */}
+          {!isReceived && (
+            <>
+              {/* Toggle Online/Offline */}
+              {onToggleStatus && (
+                <div
+                  className="flex items-center gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Switch
+                    checked={device.status === "online"}
+                    onCheckedChange={() => onToggleStatus(device)}
+                    className="data-[state=checked]:bg-green-500"
+                  />
+                </div>
+              )}
 
-          {/* SOS Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSOS(device);
-            }}
-            className="p-1.5 sm:p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
-            title="Trigger SOS"
-          >
-            <AlertTriangle className="w-4 h-4" />
-          </button>
+              {/* SOS Button */}
+              {onSOS && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSOS(device);
+                  }}
+                  className="p-1.5 sm:p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
+                  title="Trigger SOS"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                </button>
+              )}
 
-          {/* Delete Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(device);
-            }}
-            className="p-1.5 sm:p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
-            title="Delete device"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+              {/* Share Button */}
+              {onShare && !isShared && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(device);
+                  }}
+                  className="p-1.5 sm:p-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                  title="Share device"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Delete Button */}
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(device);
+                  }}
+                  className="p-1.5 sm:p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+                  title="Delete device"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
+
+      {/* Sharing Info Badge */}
+      {(isShared || isReceived) && (
+        <div className="mb-3 flex items-center gap-2">
+          {isShared && sharedWithName && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 text-blue-500 text-xs">
+              <Users className="w-3 h-3" />
+              Shared with {sharedWithName}
+            </span>
+          )}
+          {isReceived && ownerName && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 text-purple-500 text-xs">
+              <UserPlus className="w-3 h-3" />
+              Shared by {ownerName}
+            </span>
+          )}
+        </div>
+      )}
 
       <div
         className="flex items-center justify-between cursor-pointer"
@@ -217,12 +279,22 @@ const Devices = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("my-devices");
 
   // Delete confirmation state
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sharing state
+  const [sharedByMe, setSharedByMe] = useState<DeviceShareInfo[]>([]);
+  const [sharedWithMe, setSharedWithMe] = useState<DeviceShareInfo[]>([]);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [deviceToShare, setDeviceToShare] = useState<Device | null>(null);
+  const [sharePhoneNumber, setSharePhoneNumber] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
+  const [isRevoking, setIsRevoking] = useState<string | null>(null);
 
   const handleDeviceClick = (device: Device) => {
     setSelectedDevice(device);
@@ -254,6 +326,78 @@ const Devices = () => {
     setDeleteConfirmText("");
     setIsDeleteDialogOpen(true);
   };
+
+  const handleShareClick = (device: Device) => {
+    setDeviceToShare(device);
+    setSharePhoneNumber("");
+    setIsShareDialogOpen(true);
+  };
+
+  const handleShareSubmit = async () => {
+    if (!deviceToShare || !sharePhoneNumber) return;
+
+    setIsSharing(true);
+    try {
+      const response = await deviceSharingAPI.shareDevice({
+        deviceId: deviceToShare._id,
+        phoneNumber: sharePhoneNumber.replace(/\D/g, ''),
+      });
+
+      if (response.data.success) {
+        toast({
+          title: "Device Shared",
+          description: response.data.message,
+        });
+        setIsShareDialogOpen(false);
+        fetchSharedDevices();
+      }
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      toast({
+        title: "Failed to Share",
+        description: err.response?.data?.message || "Could not share device",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleRevokeShare = async (shareId: string) => {
+    setIsRevoking(shareId);
+    try {
+      const response = await deviceSharingAPI.revokeShare({ shareId });
+      if (response.data.success) {
+        toast({
+          title: "Access Revoked",
+          description: response.data.message,
+        });
+        fetchSharedDevices();
+      }
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      toast({
+        title: "Failed to Revoke",
+        description: err.response?.data?.message || "Could not revoke access",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRevoking(null);
+    }
+  };
+
+  const fetchSharedDevices = useCallback(async () => {
+    try {
+      const [sharedByMeRes, sharedWithMeRes] = await Promise.all([
+        deviceSharingAPI.getSharedByMe(),
+        deviceSharingAPI.getSharedWithMe(),
+      ]);
+      setSharedByMe(sharedByMeRes.data.shares);
+      setSharedWithMe(sharedWithMeRes.data.shares);
+    } catch (error) {
+      console.error('Error fetching shared devices:', error);
+    }
+  }, []);
 
   const handleSOS = async (device: Device) => {
     const location = currentLocation || lastKnownLocation;
@@ -360,7 +504,8 @@ const Devices = () => {
 
   useEffect(() => {
     fetchDevices();
-  }, [fetchDevices]);
+    fetchSharedDevices();
+  }, [fetchDevices, fetchSharedDevices]);
 
   const filteredDevices = devices.filter(device =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -411,69 +556,200 @@ const Devices = () => {
         />
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8 animate-fade-up" style={{ animationDelay: "0.15s" }}>
-        <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-foreground">{devices.length}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
-        </div>
-        <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-green-500">{onlineCount}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground">Online</p>
-        </div>
-        <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
-          <p className="text-xl sm:text-2xl font-bold text-muted-foreground">{offlineCount}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground">Offline</p>
-        </div>
-      </div>
+      {/* Tabs for device sections */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="my-devices" className="gap-2">
+            <Smartphone className="w-4 h-4" />
+            <span className="hidden sm:inline">My Devices</span>
+            <span className="sm:hidden">Mine</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary/20 text-xs">{devices.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="shared" className="gap-2">
+            <Share2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Shared</span>
+            <span className="sm:hidden">Shared</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500/20 text-xs">{sharedByMe.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="received" className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Received</span>
+            <span className="sm:hidden">Received</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-purple-500/20 text-xs">{sharedWithMe.length}</span>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-          <p className="text-muted-foreground">Loading your devices...</p>
-        </div>
-      ) : (
-        <>
-          {/* Device List */}
-          {filteredDevices.length > 0 ? (
+        {/* My Devices Tab */}
+        <TabsContent value="my-devices">
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+            <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{devices.length}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
+            </div>
+            <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
+              <p className="text-xl sm:text-2xl font-bold text-green-500">{onlineCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Online</p>
+            </div>
+            <div className="bg-card border border-border/50 rounded-xl p-3 sm:p-4 text-center">
+              <p className="text-xl sm:text-2xl font-bold text-muted-foreground">{offlineCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Offline</p>
+            </div>
+          </div>
+
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground">Loading your devices...</p>
+            </div>
+          ) : (
+            <>
+              {/* Device List */}
+              {filteredDevices.length > 0 ? (
+                <div className="grid gap-4">
+                  {filteredDevices.map((device, index) => (
+                    <DeviceCard
+                      key={device._id}
+                      device={device}
+                      delay={`${0.2 + index * 0.1}s`}
+                      onClick={() => handleDeviceClick(device)}
+                      onToggleStatus={handleToggleStatus}
+                      onDelete={handleDeleteClick}
+                      onSOS={handleSOS}
+                      onShare={handleShareClick}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 animate-fade-up">
+                  <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted/50 flex items-center justify-center">
+                    <Smartphone className="w-12 h-12 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">No devices found</h3>
+                  <p className="text-muted-foreground mb-6">
+                    {searchQuery
+                      ? "Try adjusting your search query"
+                      : "Start by adding your first AIoT device"
+                    }
+                  </p>
+                  {!searchQuery && (
+                    <Link to="/dashboard/add-device">
+                      <Button variant="hero">
+                        <Plus className="w-5 h-5" />
+                        Add Your First Device
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        {/* Shared Devices Tab */}
+        <TabsContent value="shared">
+          <div className="mb-4">
+            <p className="text-muted-foreground text-sm">Devices you have shared with other users</p>
+          </div>
+          {sharedByMe.length > 0 ? (
             <div className="grid gap-4">
-              {filteredDevices.map((device, index) => (
+              {sharedByMe.map((share, index) => (
+                <div
+                  key={share.id}
+                  className="bg-card border border-border/50 rounded-2xl p-4 sm:p-6 animate-fade-up"
+                  style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: "forwards" }}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                        <Smartphone className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground">{share.deviceName}</h3>
+                        <p className="text-sm text-muted-foreground font-mono">
+                          {share.deviceCode.match(/.{1,4}/g)?.join(" ")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Shared with</p>
+                        <p className="font-medium text-foreground">{share.sharedWith?.fullName}</p>
+                        <p className="text-xs text-muted-foreground">{share.sharedWith?.phone}</p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleRevokeShare(share.id)}
+                        disabled={isRevoking === share.id}
+                      >
+                        {isRevoking === share.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Ban className="w-4 h-4 mr-1" />
+                            Revoke
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 animate-fade-up">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted/50 flex items-center justify-center">
+                <Share2 className="w-12 h-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No shared devices</h3>
+              <p className="text-muted-foreground">
+                Share your devices with family or friends by clicking the share button
+              </p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Received Devices Tab */}
+        <TabsContent value="received">
+          <div className="mb-4">
+            <p className="text-muted-foreground text-sm">Devices shared with you by other users</p>
+          </div>
+          {sharedWithMe.length > 0 ? (
+            <div className="grid gap-4">
+              {sharedWithMe.map((share, index) => (
                 <DeviceCard
-                  key={device._id}
-                  device={device}
-                  delay={`${0.2 + index * 0.1}s`}
-                  onClick={() => handleDeviceClick(device)}
-                  onToggleStatus={handleToggleStatus}
-                  onDelete={handleDeleteClick}
-                  onSOS={handleSOS}
+                  key={share.id}
+                  device={{
+                    _id: share.deviceId,
+                    name: share.deviceName,
+                    code: share.deviceCode,
+                    type: share.deviceType,
+                    status: share.deviceStatus as "online" | "offline" | "maintenance",
+                    createdAt: share.sharedAt,
+                    updatedAt: share.sharedAt,
+                  }}
+                  delay={`${0.1 + index * 0.05}s`}
+                  onClick={() => {}}
+                  isReceived={true}
+                  ownerName={share.owner.fullName}
                 />
               ))}
             </div>
           ) : (
             <div className="text-center py-16 animate-fade-up">
               <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-muted/50 flex items-center justify-center">
-                <Smartphone className="w-12 h-12 text-muted-foreground" />
+                <UserPlus className="w-12 h-12 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No devices found</h3>
-              <p className="text-muted-foreground mb-6">
-                {searchQuery
-                  ? "Try adjusting your search query"
-                  : "Start by adding your first AIoT device"
-                }
+              <h3 className="text-xl font-semibold text-foreground mb-2">No received devices</h3>
+              <p className="text-muted-foreground">
+                When someone shares a device with you, it will appear here
               </p>
-              {!searchQuery && (
-                <Link to="/dashboard/add-device">
-                  <Button variant="hero">
-                    <Plus className="w-5 h-5" />
-                    Add Your First Device
-                  </Button>
-                </Link>
-              )}
             </div>
           )}
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
 
       {/* Device Details Modal */}
       <DeviceDetailsModal
@@ -544,6 +820,65 @@ const Devices = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Share Device Dialog */}
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="w-5 h-5 text-primary" />
+              Share Device
+            </DialogTitle>
+            <DialogDescription>
+              Share <strong>{deviceToShare?.name}</strong> with another user by entering their phone number.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Phone Number
+              </label>
+              <Input
+                type="tel"
+                placeholder="Enter phone number (e.g., 9876543210)"
+                value={sharePhoneNumber}
+                onChange={(e) => setSharePhoneNumber(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                The user must be registered with this phone number
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsShareDialogOpen(false);
+                setDeviceToShare(null);
+                setSharePhoneNumber("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleShareSubmit}
+              disabled={!sharePhoneNumber || sharePhoneNumber.length < 10 || isSharing}
+            >
+              {isSharing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Sharing...
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share Device
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

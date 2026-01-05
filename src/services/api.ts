@@ -209,7 +209,7 @@ export const deviceLocationsAPI = {
 // Admin API
 export const adminAPI = {
   // User management (Admin/SuperAdmin)
-  getAllUsers: (role?: string, params?: PaginationParams) => 
+  getAllUsers: (role?: string, params?: PaginationParams) =>
     api.get('/admin/users', { params: { role, ...params } }),
   getUserById: (id: string) => api.get(`/admin/users/${id}`),
   createUser: (data: {
@@ -226,14 +226,14 @@ export const adminAPI = {
   deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
 
   // Admin management (SuperAdmin only)
-  getAllAdmins: (params?: PaginationParams) => 
+  getAllAdmins: (params?: PaginationParams) =>
     api.get('/admin/admins', { params }),
   createAdmin: (data: { fullName: string; email: string; phone: string }) =>
     api.post('/admin/admins', data),
   deleteAdmin: (id: string) => api.delete(`/admin/admins/${id}`),
 
   // Police user management (SuperAdmin only)
-  getAllPoliceUsers: (params?: PaginationParams) => 
+  getAllPoliceUsers: (params?: PaginationParams) =>
     api.get('/admin/police-users', { params }),
   createPoliceUser: (data: {
     fullName: string;
@@ -267,7 +267,7 @@ export const adminAPI = {
   }) => api.patch(`/admin/police-users/${id}`, data),
 
   // Hospital user management (SuperAdmin only)
-  getAllHospitalUsers: (params?: PaginationParams) => 
+  getAllHospitalUsers: (params?: PaginationParams) =>
     api.get('/admin/hospital-users', { params }),
   createHospitalUser: (data: {
     fullName: string;
@@ -305,13 +305,13 @@ export const adminAPI = {
   }) => api.patch(`/admin/hospital-users/${id}`, data),
 
   // Device management (Admin/SuperAdmin)
-  getAllDevices: (userId?: string, params?: PaginationParams) => 
+  getAllDevices: (userId?: string, params?: PaginationParams) =>
     api.get('/admin/devices', { params: { userId, ...params } }),
   getDeviceById: (id: string) => api.get(`/admin/devices/${id}`),
 
   // Device generation (Admin/SuperAdmin)
   generateDevices: (count: number) => api.post('/admin/devices/generate', { count }),
-  getAllQrCodes: (params?: PaginationParams & { status?: string }) => 
+  getAllQrCodes: (params?: PaginationParams & { status?: string }) =>
     api.get('/admin/devices/qrcodes', { params }),
   getQrCodesStats: () => api.get('/admin/devices/qrcodes/stats'),
 
@@ -512,7 +512,7 @@ export const partnersAPI = {
   }) => api.post('/partners/request', data),
 
   // Admin - Get all partner requests
-  getAll: (status?: string, params?: PaginationParams) => 
+  getAll: (status?: string, params?: PaginationParams) =>
     api.get('/partners', { params: { status, ...params } }),
 
   // Admin - Get partner request stats
@@ -614,31 +614,30 @@ export const systemConfigAPI = {
   }) => api.patch<SystemConfig>('/system-config', data),
 };
 
-// Push Notifications API
+/**
+ * @deprecated Use oneSignalAPI instead. This VAPID-based push API is deprecated.
+ * OneSignal is now the only supported push notification system.
+ * See: frontend/src/hooks/useOneSignal.ts for client-side subscription
+ * See: oneSignalAPI below for admin notification sending
+ */
 export const pushAPI = {
-  // Get VAPID public key (no auth required)
+  /** @deprecated Use OneSignal SDK instead */
   getVapidPublicKey: () => api.get<{ publicKey: string }>('/push/vapid-public-key'),
-
-  // Subscribe to push notifications
+  /** @deprecated Use OneSignal SDK instead */
   subscribe: (data: {
     endpoint: string;
     keys: { p256dh: string; auth: string };
     userAgent?: string;
   }) => api.post('/push/subscribe', data),
-
-  // Unsubscribe from push notifications
+  /** @deprecated Use OneSignal SDK instead */
   unsubscribe: (endpoint: string) => api.delete('/push/unsubscribe', { data: { endpoint } }),
-
-  // Unsubscribe from all devices
+  /** @deprecated Use OneSignal SDK instead */
   unsubscribeAll: () => api.delete('/push/unsubscribe-all'),
-
-  // Get all subscriptions for current user
+  /** @deprecated Use OneSignal SDK instead */
   getSubscriptions: () => api.get('/push/subscriptions'),
-
-  // Send test notification to self
+  /** @deprecated Use oneSignalAPI.sendTest instead */
   sendTest: () => api.post('/push/test'),
-
-  // Admin: Send notification to specific user
+  /** @deprecated Use oneSignalAPI.sendToUser instead */
   notifyUser: (userId: string, notification: {
     title: string;
     body: string;
@@ -646,8 +645,7 @@ export const pushAPI = {
     url?: string;
     tag?: string;
   }) => api.post(`/push/notify/${userId}`, notification),
-
-  // Admin: Send notification to multiple users
+  /** @deprecated Use oneSignalAPI.sendToUsers instead */
   notifyMultiple: (userIds: string[], notification: {
     title: string;
     body: string;
@@ -655,8 +653,7 @@ export const pushAPI = {
     url?: string;
     tag?: string;
   }) => api.post('/push/notify-multiple', { userIds, notification }),
-
-  // SuperAdmin: Broadcast to all users
+  /** @deprecated Use oneSignalAPI.broadcast instead */
   broadcast: (notification: {
     title: string;
     body: string;
@@ -808,6 +805,147 @@ export const notificationCenterAPI = {
 
   // Get log by ID
   getLogById: (id: string) => api.get<NotificationLog>(`/notification-center/logs/${id}`),
+};
+
+// Device Sharing API
+export interface DeviceShareInfo {
+  id: string;
+  deviceId: string;
+  deviceName: string;
+  deviceCode: string;
+  deviceType: string;
+  deviceStatus: string;
+  owner: {
+    id: string;
+    fullName: string;
+    phone: string;
+  };
+  sharedWith?: {
+    id: string;
+    fullName: string;
+    phone: string;
+  };
+  status: string;
+  sharedAt: string;
+  revokedAt?: string;
+  isOwner: boolean;
+}
+
+export const deviceSharingAPI = {
+  // Share a device with another user by phone number
+  shareDevice: (data: { deviceId: string; phoneNumber: string; notes?: string }) =>
+    api.post<{ success: boolean; message: string; share?: any }>('/device-sharing/share', data),
+
+  // Revoke a shared device
+  revokeShare: (data: { shareId: string; reason?: string }) =>
+    api.post<{ success: boolean; message: string }>('/device-sharing/revoke', data),
+
+  // Get devices I have shared with others
+  getSharedByMe: () =>
+    api.get<{ count: number; shares: DeviceShareInfo[] }>('/device-sharing/shared-by-me'),
+
+  // Get devices shared with me by others
+  getSharedWithMe: () =>
+    api.get<{ count: number; shares: DeviceShareInfo[] }>('/device-sharing/shared-with-me'),
+
+  // Get all shares for a specific device
+  getDeviceShares: (deviceId: string) =>
+    api.get<{ count: number; shares: DeviceShareInfo[] }>(`/device-sharing/device/${deviceId}`),
+
+  // Check if current user has access to a device
+  checkAccess: (deviceId: string) =>
+    api.get<{ hasAccess: boolean; isOwner: boolean }>(`/device-sharing/access/${deviceId}`),
+
+  // Admin: Get all shares for a user
+  getUserShares: (userId: string) =>
+    api.get<{
+      ownedDevices: any[];
+      sharedByUser: DeviceShareInfo[];
+      sharedWithUser: DeviceShareInfo[];
+    }>(`/device-sharing/admin/user/${userId}`),
+
+  // Admin: Get all shares
+  getAllShares: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get<{
+      data: any[];
+      meta: { total: number; page: number; limit: number; totalPages: number };
+    }>('/device-sharing/admin/all', { params }),
+};
+
+// OneSignal API (for admin operations via backend)
+export const oneSignalAPI = {
+  // Get OneSignal configuration status
+  getStatus: () => api.get<{ configured: boolean; message: string }>('/onesignal/status'),
+
+  // Send test notification to self
+  sendTest: (data?: { title?: string; body?: string }) =>
+    api.post<{ success: boolean; message: string; notificationId?: string; recipients?: number; errors?: string[] }>(
+      '/onesignal/test',
+      data || {}
+    ),
+
+  // Send notification to a single user by external ID
+  sendToUser: (data: {
+    externalUserId: string;
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
+    data?: Record<string, any>;
+  }) =>
+    api.post<{ success: boolean; notificationId?: string; recipients?: number; errors?: string[] }>(
+      '/onesignal/send/user',
+      data
+    ),
+
+  // Send notification to multiple users by external IDs
+  sendToUsers: (data: {
+    externalUserIds: string[];
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
+    data?: Record<string, any>;
+  }) =>
+    api.post<{ success: boolean; notificationId?: string; recipients?: number; errors?: string[] }>(
+      '/onesignal/send/users',
+      data
+    ),
+
+  // Send notification by role (superadmin only)
+  sendByRole: (data: {
+    role: 'user' | 'admin' | 'superadmin' | 'police' | 'hospital';
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
+    data?: Record<string, any>;
+  }) =>
+    api.post<{ success: boolean; notificationId?: string; recipients?: number; errors?: string[] }>(
+      '/onesignal/send/role',
+      data
+    ),
+
+  // Broadcast notification to all users (superadmin only)
+  broadcast: (data: {
+    title: string;
+    body: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
+    data?: Record<string, any>;
+  }) =>
+    api.post<{ success: boolean; notificationId?: string; recipients?: number; errors?: string[] }>(
+      '/onesignal/send/broadcast',
+      data
+    ),
+
+  // Get notification status by ID
+  getNotificationStatus: (notificationId: string) =>
+    api.get<{ status: any }>(`/onesignal/notification/${notificationId}`),
 };
 
 export default api;

@@ -47,8 +47,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { cn } from "@/lib/utils";
-import { deviceLocationsAPI, sosAPI } from "@/services/api";
+import { deviceLocationsAPI, sosAPI, deviceSharingAPI, DeviceShareInfo } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { Share2, Users } from "lucide-react";
 
 interface AxiosErrorLike {
   response?: {
@@ -109,6 +110,37 @@ const endIcon = new L.DivIcon({
   "></div>`,
   iconSize: [24, 24],
   iconAnchor: [12, 24],
+});
+
+// SOS Alert blinking icon
+const sosAlertIcon = L.divIcon({
+  className: 'custom-marker sos-active',
+  html: `
+    <div style="position: relative; width: 40px; height: 40px;">
+      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite;"></div>
+      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite 0.5s;"></div>
+      <div class="sos-marker-blink" style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 40px;
+        height: 40px;
+        background: #ef4444;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+        animation: sos-blink 0.8s ease-in-out infinite;
+      ">
+        <span style="color: white; font-weight: bold; font-size: 14px;">🚨</span>
+      </div>
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
+  popupAnchor: [0, -20],
 });
 
 interface LocationHistory {
@@ -187,6 +219,10 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   const [isTriggingSOS, setIsTriggingSOS] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Device sharing state
+  const [deviceShares, setDeviceShares] = useState<DeviceShareInfo[]>([]);
+  const [isLoadingShares, setIsLoadingShares] = useState(false);
 
   // Map filter state
   const [mapFilters, setMapFilters] = useState({
@@ -334,6 +370,30 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
   const handleManualRefresh = useCallback(() => {
     fetchLocationHistory(false);
   }, [fetchLocationHistory]);
+
+  // Fetch device shares
+  const fetchDeviceShares = useCallback(async () => {
+    const deviceId = getDeviceId();
+    if (!deviceId) return;
+
+    setIsLoadingShares(true);
+    try {
+      const response = await deviceSharingAPI.getDeviceShares(deviceId);
+      setDeviceShares(response.data.shares || []);
+    } catch (error) {
+      console.error('Failed to fetch device shares:', error);
+      setDeviceShares([]);
+    } finally {
+      setIsLoadingShares(false);
+    }
+  }, [getDeviceId]);
+
+  // Fetch shares when modal opens
+  useEffect(() => {
+    if (open && device) {
+      fetchDeviceShares();
+    }
+  }, [open, device, fetchDeviceShares]);
 
   // Backfill addresses for locations without address data
   const [isBackfilling, setIsBackfilling] = useState(false);
@@ -557,6 +617,50 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   </div>
                 </div>
               )}
+
+              {/* Sharing Information */}
+              <div className="bg-muted/30 rounded-xl p-4">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Share2 className="w-4 h-4 text-primary" />
+                  Device Sharing ({deviceShares.length})
+                </h3>
+                {isLoadingShares ? (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    Loading sharing info...
+                  </div>
+                ) : deviceShares.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">This device is not shared with anyone</p>
+                ) : (
+                  <div className="space-y-2">
+                    {deviceShares.map((share, index) => (
+                      <div
+                        key={share.id || index}
+                        className="flex items-center justify-between bg-background/50 rounded-lg p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                            <Users className="w-5 h-5 text-blue-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{share.sharedWith?.fullName || 'Unknown User'}</p>
+                            <p className="text-xs text-muted-foreground">{share.sharedWith?.phone}</p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            share.status === "active"
+                              ? "bg-green-500/20 text-green-500 border-green-500/30"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {share.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
@@ -762,25 +866,54 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                       if (loc.isSOS && !mapFilters.showSOS) return null;
                       if (!loc.isSOS && !mapFilters.showWaypoints) return null;
 
+                      // Use blinking alarm icon for SOS locations
+                      if (loc.isSOS) {
+                        return (
+                          <Marker
+                            key={loc._id}
+                            position={[loc.latitude, loc.longitude]}
+                            icon={sosAlertIcon}
+                          >
+                            <Popup>
+                              <div className="text-center min-w-[150px]">
+                                <div className="font-bold mb-1 text-red-600">🚨 SOS Alert</div>
+                                <div className="text-sm font-medium">{loc.city || 'Unknown'}</div>
+                                {loc.address && (
+                                  <div className="text-xs text-gray-600">{loc.address}</div>
+                                )}
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Lat: {loc.latitude.toFixed(6)}<br />
+                                  Lng: {loc.longitude.toFixed(6)}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {formatTime(loc.recordedAt)}
+                                </div>
+                              </div>
+                            </Popup>
+                          </Marker>
+                        );
+                      }
+
+                      // Regular waypoint as CircleMarker
                       return (
                         <CircleMarker
                           key={loc._id}
                           center={[loc.latitude, loc.longitude]}
-                          radius={loc.isSOS ? 10 : 8}
-                          fillColor={loc.isSOS ? "#ef4444" : "#3b82f6"}
+                          radius={8}
+                          fillColor="#3b82f6"
                           fillOpacity={0.9}
                           color="white"
-                          weight={loc.isSOS ? 4 : 3}
+                          weight={3}
                         >
                           <Tooltip permanent={false} direction="top" offset={[0, -5]}>
                             <div className="text-xs font-mono">
-                              {loc.isSOS ? "🚨 SOS" : "📍"} {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                              📍 {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
                             </div>
                           </Tooltip>
                           <Popup>
                             <div className="text-center min-w-[150px]">
-                              <div className={`font-bold mb-1 ${loc.isSOS ? "text-red-600" : "text-blue-600"}`}>
-                                {loc.isSOS ? "🚨 SOS Alert" : `📍 Waypoint ${index + 1}`}
+                              <div className="font-bold mb-1 text-blue-600">
+                                📍 Waypoint {index + 1}
                               </div>
                               <div className="text-sm font-medium">{loc.city || 'Unknown'}</div>
                               {loc.address && (

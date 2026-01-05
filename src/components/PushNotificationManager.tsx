@@ -1,21 +1,55 @@
+import { useState } from 'react';
 import { Bell, BellOff, BellRing, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useOneSignal } from '@/hooks/useOneSignal';
 
 export function PushNotificationManager() {
   const {
-    permission,
+    isInitialized,
     isSubscribed,
-    isLoading,
-    error,
-    subscribe,
-    unsubscribe,
-    sendTestNotification,
-  } = usePushNotifications();
+    permission,
+    isSupported,
+    requestPermission,
+    optIn,
+    optOut,
+  } = useOneSignal();
 
-  if (permission === 'unsupported') {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubscribe = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const success = await requestPermission();
+      if (!success) {
+        // If permission was granted but optIn failed, try optIn
+        await optIn();
+      }
+    } catch (err) {
+      setError('Failed to enable notifications. Please try again.');
+      console.error('[PushNotificationManager] Subscribe error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await optOut();
+    } catch (err) {
+      setError('Failed to disable notifications. Please try again.');
+      console.error('[PushNotificationManager] Unsubscribe error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isSupported) {
     return (
       <Card>
         <CardHeader>
@@ -73,12 +107,19 @@ export function PushNotificationManager() {
           </Alert>
         )}
 
+        {!isInitialized && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Initializing push notifications...</span>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3">
           {isSubscribed ? (
             <Button
               variant="outline"
-              onClick={unsubscribe}
-              disabled={isLoading}
+              onClick={handleUnsubscribe}
+              disabled={isLoading || !isInitialized}
               className="flex items-center gap-2"
             >
               {isLoading ? (
@@ -90,8 +131,8 @@ export function PushNotificationManager() {
             </Button>
           ) : (
             <Button
-              onClick={subscribe}
-              disabled={isLoading || permission === 'denied'}
+              onClick={handleSubscribe}
+              disabled={isLoading || permission === 'denied' || !isInitialized}
               className="flex items-center gap-2"
             >
               {isLoading ? (

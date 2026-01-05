@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { authAPI } from '@/services/api';
+import { useOneSignal } from '@/hooks/useOneSignal';
 
 export type UserRole = 'user' | 'admin' | 'superadmin' | 'police' | 'hospital';
 
@@ -42,6 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { setExternalUserId, removeExternalUserId, requestPermission, isInitialized } = useOneSignal();
 
   useEffect(() => {
     // Load auth state from localStorage
@@ -50,24 +52,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      
+      // Set OneSignal external user ID on app load if user is logged in
+      if (isInitialized && parsedUser?.id) {
+        setExternalUserId(parsedUser.id, parsedUser.role);
+      }
     }
     setIsLoading(false);
-  }, []);
+  }, [isInitialized, setExternalUserId]);
 
   const login = useCallback((newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem('auth_token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
-  }, []);
+    
+    // Set OneSignal external user ID on login
+    if (newUser?.id) {
+      setExternalUserId(newUser.id, newUser.role);
+      // Request notification permission after login
+      requestPermission().catch(console.error);
+    }
+  }, [setExternalUserId, requestPermission]);
 
   const logout = useCallback(() => {
+    // Remove OneSignal external user ID on logout
+    removeExternalUserId();
+    
     setToken(null);
     setUser(null);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
-  }, []);
+  }, [removeExternalUserId]);
 
   const updateUser = useCallback((updatedUser: User) => {
     setUser(updatedUser);
