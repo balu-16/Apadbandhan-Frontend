@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { authAPI } from '@/services/api';
 import { useOneSignal } from '@/hooks/useOneSignal';
 
@@ -43,10 +43,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { setExternalUserId, removeExternalUserId, requestPermission, isInitialized } = useOneSignal();
+  const { setExternalUserId, removeExternalUserId, requestPermission, isReady } = useOneSignal();
+  const oneSignalSetupDone = useRef(false);
 
+  // Load auth state from localStorage on mount
   useEffect(() => {
-    // Load auth state from localStorage
     const storedToken = localStorage.getItem('auth_token');
     const storedUser = localStorage.getItem('user');
 
@@ -54,14 +55,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setToken(storedToken);
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      
-      // Set OneSignal external user ID on app load if user is logged in
-      if (isInitialized && parsedUser?.id) {
-        setExternalUserId(parsedUser.id, parsedUser.role);
-      }
     }
     setIsLoading(false);
-  }, [isInitialized, setExternalUserId]);
+  }, []);
+
+  // Set OneSignal external user ID when ready and user is logged in
+  useEffect(() => {
+    if (isReady && user?.id && !oneSignalSetupDone.current) {
+      oneSignalSetupDone.current = true;
+      setExternalUserId(user.id, user.role);
+    }
+  }, [isReady, user, setExternalUserId]);
 
   const login = useCallback((newToken: string, newUser: User) => {
     setToken(newToken);
@@ -69,11 +73,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('auth_token', newToken);
     localStorage.setItem('user', JSON.stringify(newUser));
     
-    // Set OneSignal external user ID on login
+    // Set OneSignal external user ID on login (setExternalUserId has its own retry logic)
     if (newUser?.id) {
+      oneSignalSetupDone.current = false; // Reset so useEffect can trigger if needed
       setExternalUserId(newUser.id, newUser.role);
-      // Request notification permission after login
-      requestPermission().catch(console.error);
+      // Request notification permission after a delay
+      setTimeout(() => {
+        requestPermission().catch(console.error);
+      }, 2000);
     }
   }, [setExternalUserId, requestPermission]);
 

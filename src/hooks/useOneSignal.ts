@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 
 declare global {
   interface Window {
@@ -12,6 +12,7 @@ interface OneSignalState {
   isSubscribed: boolean;
   permission: NotificationPermission | 'default';
   isSupported: boolean;
+  isReady: boolean;
 }
 
 export const useOneSignal = () => {
@@ -20,26 +21,56 @@ export const useOneSignal = () => {
     isSubscribed: false,
     permission: 'default',
     isSupported: 'Notification' in window && 'serviceWorker' in navigator,
+    isReady: false,
   });
+  
+  const oneSignalRef = useRef<any>(null);
+  const initPromiseRef = useRef<Promise<any> | null>(null);
 
-  // Get OneSignal instance safely
+  // Get OneSignal instance safely - with proper initialization wait
   const getOneSignal = useCallback((): Promise<any> => {
-    return new Promise((resolve, reject) => {
-      if (window.OneSignal) {
-        resolve(window.OneSignal);
-        return;
-      }
+    // Return cached instance if already initialized
+    if (oneSignalRef.current && state.isReady) {
+      return Promise.resolve(oneSignalRef.current);
+    }
 
-      if (!window.OneSignalDeferred) {
-        reject(new Error('OneSignal not loaded'));
-        return;
-      }
+    // Return existing promise if initialization is in progress
+    if (initPromiseRef.current) {
+      return initPromiseRef.current;
+    }
 
-      window.OneSignalDeferred.push(async (OneSignal: any) => {
-        resolve(OneSignal);
-      });
+    // Create new initialization promise
+    initPromiseRef.current = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('OneSignal initialization timeout'));
+      }, 10000);
+
+      const tryGetOneSignal = () => {
+        if (window.OneSignal && typeof window.OneSignal.User !== 'undefined') {
+          clearTimeout(timeout);
+          oneSignalRef.current = window.OneSignal;
+          resolve(window.OneSignal);
+          return;
+        }
+
+        if (!window.OneSignalDeferred) {
+          // Create the deferred array if it doesn't exist
+          window.OneSignalDeferred = [];
+        }
+
+        window.OneSignalDeferred.push(async (OneSignal: any) => {
+          clearTimeout(timeout);
+          oneSignalRef.current = OneSignal;
+          resolve(OneSignal);
+        });
+      };
+
+      // Small delay to ensure SDK script has loaded
+      setTimeout(tryGetOneSignal, 100);
     });
-  }, []);
+
+    return initPromiseRef.current;
+  }, [state.isReady]);
 
   // Initialize and check subscription status
   useEffect(() => {
@@ -56,6 +87,7 @@ export const useOneSignal = () => {
           isSubscribed: isSubscribed || false,
           permission: permission ? 'granted' : Notification.permission,
           isSupported: isPushSupported,
+          isReady: true,
         });
 
         // Listen for subscription changes
@@ -98,25 +130,51 @@ export const useOneSignal = () => {
     }
   }, [getOneSignal]);
 
-  // Set external user ID for targeting
+  // Set external user ID for targeting - using tags as primary method (more reliable)
   const setExternalUserId = useCallback(async (userId: string, userRole?: string): Promise<void> => {
+    if (!userId) {
+      console.warn('[OneSignal] No user ID provided');
+      return;
+    }
+
+    // Wait for SDK to be available
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     try {
       const OneSignal = await getOneSignal();
       
-      // Set external user ID for targeting
-      await OneSignal.login(userId);
-      
-      // Add tags for role-based targeting
-      if (userRole) {
-        await OneSignal.User.addTags({
-          role: userRole,
-          user_id: userId,
-        });
+      if (!OneSignal || !OneSignal.User) {
+        console.warn('[OneSignal] SDK not ready, skipping user identification');
+        return;
       }
 
-      console.log('[OneSignal] External user ID set:', userId, 'role:', userRole);
-    } catch (error) {
-      console.error('[OneSignal] Failed to set external user ID:', error);
+      // Use tags for user identification (more reliable than login)
+      const tags: Record<string, string> = {
+        user_id: userId,
+        external_user_id: userId,
+      };
+      
+      if (userRole) {
+        tags.role = userRole;
+      }
+
+      await OneSignal.User.addTags(tags);
+      console.log('[OneSignal] User tags set:', tags);
+
+      // Try login but don't fail if it doesn't work
+      // The SDK's login() can fail if internal state isn't ready
+      try {
+        if (OneSignal.login && typeof OneSignal.login === 'function') {
+          await OneSignal.login(userId);
+          console.log('[OneSignal] Login successful for:', userId);
+        }
+      } catch (loginError) {
+        // Login failed but tags are set - user can still receive targeted notifications
+        console.log('[OneSignal] Login skipped (tags already set):', loginError);
+      }
+
+    } catch (error: any) {
+      console.error('[OneSignal] Failed to set user identification:', error);
     }
   }, [getOneSignal]);
 
@@ -125,10 +183,27 @@ export const useOneSignal = () => {
     try {
       const OneSignal = await getOneSignal();
       
-      // Logout from OneSignal
-      await OneSignal.logout();
-      
-      console.log('[OneSignal] External user ID removed');
+      if (!OneSignal || !OneSignal.User) {
+        return;
+      }
+
+      // Remove tags first (always works)
+      try {
+        await OneSignal.User.removeTags(['user_id', 'external_user_id', 'role']);
+        console.log('[OneSignal] User tags removed');
+      } catch (e) {
+        console.log('[OneSignal] Failed to remove tags:', e);
+      }
+
+      // Try logout but don't fail if it doesn't work
+      try {
+        if (OneSignal.logout && typeof OneSignal.logout === 'function') {
+          await OneSignal.logout();
+          console.log('[OneSignal] Logout successful');
+        }
+      } catch (logoutError) {
+        console.log('[OneSignal] Logout skipped:', logoutError);
+      }
     } catch (error) {
       console.error('[OneSignal] Failed to remove external user ID:', error);
     }
