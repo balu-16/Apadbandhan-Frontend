@@ -126,7 +126,10 @@ const UserAlertsPage = () => {
     try {
       // Fetch combined alerts (both SOS and device-triggered alerts)
       const response = await alertsAPI.getCombined(source);
-      const combinedAlerts = Array.isArray(response.data) ? response.data : [];
+      // Handle paginated response structure { data: [...], meta: {...} }
+      const combinedAlerts = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data?.data || []);
 
       // Map to standard Alert format
       const userAlerts: Alert[] = combinedAlerts.map((item: any) => ({
@@ -164,9 +167,19 @@ const UserAlertsPage = () => {
     setSourceFilter(source);
   };
 
-  const handleViewAlert = (alert: Alert) => {
+  const handleViewAlert = async (alert: Alert) => {
     setSelectedAlert(alert);
     setIsModalOpen(true);
+    
+    // Mark the alert as viewed by this user (reduces sidebar badge count)
+    try {
+      await alertsAPI.markAsViewed(alert._id, alert.source || 'alert');
+      // Dispatch custom event to notify sidebars to refresh their badge count
+      window.dispatchEvent(new CustomEvent('alert-viewed'));
+    } catch (error) {
+      // Silently fail - viewing should still work even if marking fails
+      console.error('Failed to mark alert as viewed:', error);
+    }
   };
 
   const filteredAlerts = alerts.filter(alert => {

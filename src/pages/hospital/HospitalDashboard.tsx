@@ -157,7 +157,11 @@ const HospitalDashboard = () => {
         resolvedAlerts: statsData.resolved || 0,
       });
 
-      setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data as Alert[] : []);
+      // Handle paginated response structure { data: [...], meta: {...} } or direct array
+      const alertsData = Array.isArray(alertsRes.data) 
+        ? alertsRes.data 
+        : (alertsRes.data?.data || []);
+      setAlerts(alertsData as Alert[]);
     } catch (error: unknown) {
       const err = error as AxiosErrorLike;
       console.error("Failed to fetch dashboard data:", err.response?.data || err.message);
@@ -175,9 +179,17 @@ const HospitalDashboard = () => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const handleAlertClick = (alert: Alert) => {
+  const handleAlertClick = async (alert: Alert) => {
     setSelectedAlert(alert);
     setIsModalOpen(true);
+    
+    // Mark the alert as viewed by this user (reduces sidebar badge count)
+    try {
+      await alertsAPI.markAsViewed(alert._id, alert.source || 'sos');
+      window.dispatchEvent(new CustomEvent('alert-viewed'));
+    } catch (error) {
+      console.error('Failed to mark alert as viewed:', error);
+    }
   };
 
   const handleUpdateStatus = async (alertId: string, status: string, notes?: string) => {

@@ -823,13 +823,16 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
         ]);
       }
 
-      // Handle paginated response for admin/superadmin
+      // Handle paginated response structure { data: [...], meta: {...} } or direct array
+      const alertsData = Array.isArray(alertsRes.data) 
+        ? alertsRes.data 
+        : (alertsRes.data?.data || []);
+      setAlerts(alertsData);
+      
+      // Set pagination info for admin/superadmin
       if (portalType === 'admin' || portalType === 'superadmin') {
-        setAlerts(alertsRes.data.data || []);
-        setTotalPages(alertsRes.data.meta?.totalPages || 1);
-        setTotalItems(alertsRes.data.meta?.total || 0);
-      } else {
-        setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+        setTotalPages(alertsRes.data?.meta?.totalPages || 1);
+        setTotalItems(alertsRes.data?.meta?.total || alertsData.length);
       }
       setStats(statsRes.data);
     } catch {
@@ -906,6 +909,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
       const source = alertToDelete.source || 'alert';
       await alertsAPI.delete(alertToDelete._id, source);
       toast.success(`${source === 'sos' ? 'SOS alert' : 'Alert'} deleted successfully`);
+      // Dispatch event to refresh sidebar badge count
+      window.dispatchEvent(new CustomEvent('alert-viewed'));
       fetchAlerts(true);
     } catch (error: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
