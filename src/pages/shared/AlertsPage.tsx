@@ -853,9 +853,17 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
     setPage(newPage);
   };
 
-  const handleViewAlert = (alert: Alert) => {
+  const handleViewAlert = async (alert: Alert) => {
     setSelectedAlert(alert);
     setIsModalOpen(true);
+    
+    // Mark the alert as viewed by this user (reduces sidebar badge count)
+    try {
+      await alertsAPI.markAsViewed(alert._id, alert.source || 'alert');
+    } catch (error) {
+      // Silently fail - viewing should still work even if marking fails
+      console.error('Failed to mark alert as viewed:', error);
+    }
   };
 
   const handleRespondToAlert = async (alert: Alert) => {

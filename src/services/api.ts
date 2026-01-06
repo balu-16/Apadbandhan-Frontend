@@ -171,6 +171,9 @@ export const alertsAPI = {
     api.patch(`/alerts/${id}/status`, data),
   delete: (id: string, source: 'alert' | 'sos' = 'alert') =>
     api.delete(`/alerts/${id}`, { params: { source } }),
+  // Mark an alert as viewed by the current user
+  markAsViewed: (id: string, source: 'alert' | 'sos' = 'alert') =>
+    api.patch(`/alerts/${id}/viewed`, null, { params: { source } }),
 };
 
 // Device Locations API

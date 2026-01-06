@@ -30,20 +30,20 @@ const PoliceSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onMob
   const { logout, user } = useAuth();
   const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
 
-  // Fetch pending alerts count from police-specific API
+  // Fetch unviewed alerts count from police-specific API
   useEffect(() => {
-    const fetchPendingCount = async () => {
+    const fetchUnviewedCount = async () => {
       try {
         const response = await policeAPI.getStats();
-        // Use pendingAlerts from police stats (same as alerts page)
-        setPendingAlertsCount(response.data?.pendingAlerts || response.data?.pending || 0);
+        // Use unviewed count if available, fallback to pending for backward compatibility
+        setPendingAlertsCount(response.data?.unviewed || response.data?.pendingAlerts || response.data?.pending || 0);
       } catch (error) {
-        console.error('Failed to fetch pending alerts count:', error);
+        console.error('Failed to fetch unviewed alerts count:', error);
       }
     };
-    fetchPendingCount();
+    fetchUnviewedCount();
     // Refresh every 30 seconds
-    const interval = setInterval(fetchPendingCount, 30000);
+    const interval = setInterval(fetchUnviewedCount, 30000);
     return () => clearInterval(interval);
   }, []);
 

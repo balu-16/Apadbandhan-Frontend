@@ -257,7 +257,19 @@ const NotificationCenter = () => {
   }, []);
 
   const handleSendConfirm = useCallback(() => {
-    const userIdsToSend = !selectAllUsers && selectedUserIds.length > 0 ? selectedUserIds : undefined;
+    // Determine which user IDs to send to:
+    // - If targeting 'all' roles, let backend resolve all users
+    // - If selectAllUsers is true, let backend resolve all users for the role
+    // - If specific users are selected, send only those IDs
+    let userIdsToSend: string[] | undefined = undefined;
+    
+    if (targetRole !== 'all' && !selectAllUsers) {
+      // Must have specific users selected when selectAllUsers is false
+      if (selectedUserIds.length === 0) {
+        return; // Safety check - shouldn't happen due to canSend
+      }
+      userIdsToSend = selectedUserIds;
+    }
     
     if (sendMode === 'template' && selectedTemplate) {
       sendTemplateMutation.mutate({
@@ -303,9 +315,12 @@ const NotificationCenter = () => {
     }
   }, []);
 
-  const canSend = sendMode === 'template' 
+  // Check if users are properly selected
+  const hasValidUserSelection = targetRole === 'all' || selectAllUsers || selectedUserIds.length > 0;
+  
+  const canSend = (sendMode === 'template' 
     ? selectedTemplate !== null 
-    : customTitle.trim() !== '' && customBody.trim() !== '';
+    : customTitle.trim() !== '' && customBody.trim() !== '') && hasValidUserSelection;
 
   // Group templates by category
   const templatesByCategory = templatesData?.templates.reduce((acc, template) => {
@@ -357,9 +372,9 @@ const NotificationCenter = () => {
 
         {/* Send Notification Tab */}
         <TabsContent value="send" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left: Notification Content */}
-            <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6">
+            {/* Notification Content */}
+            <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Notification Content</CardTitle>
@@ -493,206 +508,262 @@ const NotificationCenter = () => {
               </Card>
             </div>
 
-            {/* Right: Target & Filters */}
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Target Audience
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Target Role</Label>
-                    <Select
-                      value={targetRole}
-                      onValueChange={(value: TargetRole) => {
-                        setTargetRole(value);
-                        setFilters({});
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((role) => (
-                          <SelectItem key={role.value} value={role.value}>
-                            {role.label}
-                          </SelectItem>
+            {/* Target Audience - Now below Notification Content */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Target Audience
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Left: Role Selection & Filters */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Target Role</Label>
+                      <Select
+                        value={targetRole}
+                        onValueChange={(value: TargetRole) => {
+                          setTargetRole(value);
+                          setFilters({});
+                          setSelectedUserIds([]);
+                          setSelectAllUsers(true);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Dynamic Filters */}
+                    {targetRole !== 'all' && filterOptions?.filters && filterOptions.filters.length > 0 && (
+                      <div className="space-y-3 pt-4 border-t">
+                        <div className="flex items-center gap-2">
+                          <Filter className="h-4 w-4" />
+                          <Label>Filters (Optional)</Label>
+                        </div>
+                        {filterOptions.filters.map((filter: FilterOption) => (
+                          <div key={filter.field} className="space-y-1">
+                            <Label className="text-sm">{filter.label}</Label>
+                            {filter.type === 'boolean' ? (
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={filters[filter.field] === true}
+                                  onCheckedChange={(checked) =>
+                                    handleFilterChange(filter.field, checked ? true : undefined)
+                                  }
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  {filters[filter.field] ? 'Yes' : 'Any'}
+                                </span>
+                              </div>
+                            ) : filter.type === 'select' && filter.options ? (
+                              <Select
+                                value={filters[filter.field] || '_any'}
+                                onValueChange={(value) => handleFilterChange(filter.field, value === '_any' ? undefined : value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Any" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_any">Any</SelectItem>
+                                  {filter.options.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                value={filters[filter.field] || ''}
+                                onChange={(e) => handleFilterChange(filter.field, e.target.value)}
+                                placeholder={`Filter by ${filter.label.toLowerCase()}`}
+                              />
+                            )}
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    )}
+
+                    {/* Preview Section */}
+                    <div className="pt-4 border-t space-y-3">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={handlePreview}
+                        disabled={previewLoading || (!selectAllUsers && selectedUserIds.length === 0)}
+                      >
+                        {previewLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Eye className="mr-2 h-4 w-4" />
+                        )}
+                        Preview Target Count
+                      </Button>
+
+                      {previewData && selectAllUsers && (
+                        <div className="rounded-lg border p-4 bg-muted/30">
+                          <div className="text-2xl font-bold text-center">
+                            {previewData.count.toLocaleString()}
+                          </div>
+                          <p className="text-sm text-muted-foreground text-center">
+                            users will receive this notification
+                          </p>
+                          {Object.keys(previewData.breakdown).length > 1 && (
+                            <div className="mt-3 pt-3 border-t space-y-1">
+                              {Object.entries(previewData.breakdown).map(([role, count]) => (
+                                <div key={role} className="flex justify-between text-sm">
+                                  <span className="capitalize">{role}</span>
+                                  <span className="font-medium">{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Dynamic Filters */}
-                  {targetRole !== 'all' && filterOptions?.filters && filterOptions.filters.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t">
-                      <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4" />
-                        <Label>Filters (Optional)</Label>
+                  {/* Right: User List for Selected Role */}
+                  <div className="space-y-4">
+                    {targetRole === 'all' ? (
+                      <div className="flex flex-col items-center justify-center h-full min-h-[200px] rounded-lg border border-dashed p-6 text-center">
+                        <Users className="h-10 w-10 text-muted-foreground mb-3" />
+                        <p className="text-sm text-muted-foreground">
+                          Select a specific role to view and select individual users
+                        </p>
                       </div>
-                      {filterOptions.filters.map((filter: FilterOption) => (
-                        <div key={filter.field} className="space-y-1">
-                          <Label className="text-sm">{filter.label}</Label>
-                          {filter.type === 'boolean' ? (
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={filters[filter.field] === true}
-                                onCheckedChange={(checked) =>
-                                  handleFilterChange(filter.field, checked ? true : undefined)
-                                }
-                              />
-                              <span className="text-sm text-muted-foreground">
-                                {filters[filter.field] ? 'Yes' : 'Any'}
-                              </span>
-                            </div>
-                          ) : filter.type === 'select' && filter.options ? (
-                            <Select
-                              value={filters[filter.field] || '_any'}
-                              onValueChange={(value) => handleFilterChange(filter.field, value === '_any' ? undefined : value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Any" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="_any">Any</SelectItem>
-                                {filter.options.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Input
-                              value={filters[filter.field] || ''}
-                              onChange={(e) => handleFilterChange(filter.field, e.target.value)}
-                              placeholder={`Filter by ${filter.label.toLowerCase()}`}
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* User Selection */}
-                  {targetRole !== 'all' && (
-                    <div className="space-y-3 pt-4 border-t">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">Select Recipients</Label>
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="select-all"
-                            checked={selectAllUsers}
-                            onCheckedChange={(checked) => handleSelectAllToggle(checked as boolean)}
-                          />
-                          <Label htmlFor="select-all" className="text-sm cursor-pointer">
-                            All {ROLES.find(r => r.value === targetRole)?.label || targetRole}
-                          </Label>
-                        </div>
-                      </div>
-
-                      {!selectAllUsers && (
-                        <div className="space-y-2">
-                          <Input
-                            placeholder="Search users..."
-                            value={userSearchQuery}
-                            onChange={(e) => setUserSearchQuery(e.target.value)}
-                            className="h-8"
-                          />
-                          <ScrollArea className="h-48 rounded-md border">
-                            {roleUsersLoading ? (
-                              <div className="flex items-center justify-center h-full">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                              </div>
-                            ) : filteredRoleUsers.length === 0 ? (
-                              <div className="p-4 text-center text-sm text-muted-foreground">
-                                No users found
-                              </div>
-                            ) : (
-                              <div className="p-2 space-y-1">
-                                {filteredRoleUsers.map((user: RoleUser) => (
-                                  <div
-                                    key={user._id}
-                                    className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 cursor-pointer"
-                                    onClick={() => handleToggleUser(user._id)}
-                                  >
-                                    <Checkbox
-                                      checked={selectedUserIds.includes(user._id)}
-                                      onCheckedChange={() => handleToggleUser(user._id)}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">{user.fullName}</p>
-                                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                                    </div>
-                                    {user.extra && (
-                                      <Badge variant="outline" className="text-xs shrink-0">
-                                        {user.extra}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </ScrollArea>
-                          {selectedUserIds.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              {selectedUserIds.length} user(s) selected
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handlePreview}
-                    disabled={previewLoading || (!selectAllUsers && selectedUserIds.length === 0)}
-                  >
-                    {previewLoading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <Eye className="mr-2 h-4 w-4" />
-                    )}
-                    Preview Target Count
-                  </Button>
-
-                  {previewData && selectAllUsers && (
-                    <div className="rounded-lg border p-4 bg-muted/30">
-                      <div className="text-2xl font-bold text-center">
-                        {previewData.count.toLocaleString()}
-                      </div>
-                      <p className="text-sm text-muted-foreground text-center">
-                        users will receive this notification
-                      </p>
-                      {Object.keys(previewData.breakdown).length > 1 && (
-                        <div className="mt-3 pt-3 border-t space-y-1">
-                          {Object.entries(previewData.breakdown).map(([role, count]) => (
-                            <div key={role} className="flex justify-between text-sm">
-                              <span className="capitalize">{role}</span>
-                              <span className="font-medium">{count}</span>
-                            </div>
-                          ))}
+                      <>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">
+                            {ROLES.find(r => r.value === targetRole)?.label || targetRole} ({roleUsersData?.users?.length || 0})
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="select-all"
+                              checked={selectAllUsers}
+                              onCheckedChange={(checked) => handleSelectAllToggle(checked as boolean)}
+                            />
+                            <Label htmlFor="select-all" className="text-sm cursor-pointer">
+                              Select All
+                            </Label>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
 
-              <Button
-                className="w-full"
-                size="lg"
-                disabled={!canSend}
-                onClick={() => setShowConfirmDialog(true)}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Send Notification
-              </Button>
-            </div>
+                        <Input
+                          placeholder="Search users by name, email or phone..."
+                          value={userSearchQuery}
+                          onChange={(e) => setUserSearchQuery(e.target.value)}
+                        />
+
+                        <ScrollArea className="h-[280px] rounded-md border">
+                          {roleUsersLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : filteredRoleUsers.length === 0 ? (
+                            <div className="p-6 text-center text-sm text-muted-foreground">
+                              No users found for this role
+                            </div>
+                          ) : (
+                            <div className="p-2 space-y-1">
+                              {filteredRoleUsers.map((user: RoleUser) => (
+                                <div
+                                  key={user._id}
+                                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                    selectAllUsers || selectedUserIds.includes(user._id)
+                                      ? 'bg-primary/10 border border-primary/20'
+                                      : 'hover:bg-muted/50 border border-transparent'
+                                  }`}
+                                  onClick={() => {
+                                    if (selectAllUsers) {
+                                      setSelectAllUsers(false);
+                                      setSelectedUserIds([user._id]);
+                                    } else {
+                                      handleToggleUser(user._id);
+                                    }
+                                  }}
+                                >
+                                  <Checkbox
+                                    checked={selectAllUsers || selectedUserIds.includes(user._id)}
+                                    onCheckedChange={() => {
+                                      if (selectAllUsers) {
+                                        setSelectAllUsers(false);
+                                        setSelectedUserIds([user._id]);
+                                      } else {
+                                        handleToggleUser(user._id);
+                                      }
+                                    }}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{user.fullName}</p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {user.email} {user.phone && `• ${user.phone}`}
+                                    </p>
+                                  </div>
+                                  {user.extra && (
+                                    <Badge variant="outline" className="text-xs shrink-0">
+                                      {user.extra}
+                                    </Badge>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </ScrollArea>
+
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>
+                            {selectAllUsers
+                              ? `All ${roleUsersData?.users?.length || 0} users selected`
+                              : `${selectedUserIds.length} user(s) selected`}
+                          </span>
+                          {!selectAllUsers && selectedUserIds.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUserIds([]);
+                                setSelectAllUsers(true);
+                              }}
+                            >
+                              Clear Selection
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Send Button */}
+                {!hasValidUserSelection && (
+                  <p className="text-sm text-destructive text-center">
+                    Please select at least one user or enable "Select All"
+                  </p>
+                )}
+                <Button
+                  className="w-full"
+                  size="lg"
+                  disabled={!canSend}
+                  onClick={() => setShowConfirmDialog(true)}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Notification
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 

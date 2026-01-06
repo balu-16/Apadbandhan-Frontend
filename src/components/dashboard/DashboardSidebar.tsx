@@ -39,19 +39,20 @@ const DashboardSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, on
   const { logout, user } = useAuth();
   const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
 
-  // Fetch pending alerts count for user's devices
+  // Fetch unviewed alerts count for user's devices
   useEffect(() => {
-    const fetchPendingCount = async () => {
+    const fetchUnviewedCount = async () => {
       try {
         const response = await alertsAPI.getCombinedStats();
-        setPendingAlertsCount(response.data?.pending || 0);
+        // Use unviewed count (alerts not yet viewed by this user) instead of pending
+        setPendingAlertsCount(response.data?.unviewed || 0);
       } catch (error) {
-        console.error('Failed to fetch pending alerts count:', error);
+        console.error('Failed to fetch unviewed alerts count:', error);
       }
     };
-    fetchPendingCount();
+    fetchUnviewedCount();
     // Refresh every 30 seconds
-    const interval = setInterval(fetchPendingCount, 30000);
+    const interval = setInterval(fetchUnviewedCount, 30000);
     return () => clearInterval(interval);
   }, []);
 

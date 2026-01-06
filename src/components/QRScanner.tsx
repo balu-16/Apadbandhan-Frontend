@@ -50,10 +50,32 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }: QRScannerProps) => {
         },
         (decodedText) => {
           // Extract 16-digit device code from scanned text
-          // This handles cases where QR contains URL or other data with embedded code
+          // This handles multiple QR formats including JSON and plain text
           const cleanText = decodedText.replace(/\s/g, '');
           
-          // First try exact 16-digit match
+          // First try to parse as JSON (Apadbandhav device QR format)
+          // Format: {"type":"APADBANDHAV_DEVICE","code":"1234567890123456","version":"1.0"}
+          try {
+            const jsonData = JSON.parse(decodedText);
+            if (jsonData.type === 'APADBANDHAV_DEVICE' && jsonData.code) {
+              const code = jsonData.code.toString();
+              if (/^\d{16}$/.test(code)) {
+                stopScanning();
+                onScanSuccess(code);
+                return;
+              }
+            }
+            // Also check for just a "code" field in any JSON
+            if (jsonData.code && /^\d{16}$/.test(jsonData.code.toString())) {
+              stopScanning();
+              onScanSuccess(jsonData.code.toString());
+              return;
+            }
+          } catch {
+            // Not JSON, continue with other parsing methods
+          }
+          
+          // Try exact 16-digit match (plain QR code)
           if (/^\d{16}$/.test(cleanText)) {
             stopScanning();
             onScanSuccess(cleanText);

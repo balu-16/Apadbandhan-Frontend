@@ -36,19 +36,20 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
   const { logout, isSuperAdmin, user } = useAuth();
   const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
 
-  // Fetch pending alerts count
+  // Fetch unviewed alerts count
   useEffect(() => {
-    const fetchPendingCount = async () => {
+    const fetchUnviewedCount = async () => {
       try {
         const response = await alertsAPI.getCombinedStats();
-        setPendingAlertsCount(response.data?.pending || 0);
+        // Use unviewed count (alerts not yet viewed by this user) instead of pending
+        setPendingAlertsCount(response.data?.unviewed || 0);
       } catch (error) {
-        console.error('Failed to fetch pending alerts count:', error);
+        console.error('Failed to fetch unviewed alerts count:', error);
       }
     };
-    fetchPendingCount();
+    fetchUnviewedCount();
     // Refresh every 30 seconds
-    const interval = setInterval(fetchPendingCount, 30000);
+    const interval = setInterval(fetchUnviewedCount, 30000);
     return () => clearInterval(interval);
   }, []);
 
