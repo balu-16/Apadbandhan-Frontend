@@ -179,11 +179,23 @@ const NotificationCenter = () => {
     mutationFn: (data: SendTemplateNotificationData) =>
       notificationCenterAPI.sendTemplateNotification(data),
     onSuccess: (response) => {
-      toast({
-        title: response.data.success ? 'Notification Sent' : 'Partial Success',
-        description: response.data.message,
-        variant: response.data.success ? 'default' : 'destructive',
-      });
+      const stats = response.data.stats;
+      const hasRecipients = stats?.success > 0;
+      
+      // Show warning if 0 recipients reached
+      if (!hasRecipients && stats?.total > 0) {
+        toast({
+          title: 'No Recipients Reached',
+          description: 'None of the selected users have push notifications enabled. Users must visit the site, allow notifications, and be logged in.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: hasRecipients ? 'Notification Sent' : 'Partial Success',
+          description: response.data.message,
+          variant: hasRecipients ? 'default' : 'destructive',
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['notification-logs'] });
       setShowConfirmDialog(false);
       resetForm();
@@ -201,11 +213,23 @@ const NotificationCenter = () => {
     mutationFn: (data: SendCustomNotificationData) =>
       notificationCenterAPI.sendCustomNotification(data),
     onSuccess: (response) => {
-      toast({
-        title: response.data.success ? 'Notification Sent' : 'Partial Success',
-        description: response.data.message,
-        variant: response.data.success ? 'default' : 'destructive',
-      });
+      const stats = response.data.stats;
+      const hasRecipients = stats?.success > 0;
+      
+      // Show warning if 0 recipients reached
+      if (!hasRecipients && stats?.total > 0) {
+        toast({
+          title: 'No Recipients Reached',
+          description: 'None of the selected users have push notifications enabled. Users must visit the site, allow notifications, and be logged in.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: hasRecipients ? 'Notification Sent' : 'Partial Success',
+          description: response.data.message,
+          variant: hasRecipients ? 'default' : 'destructive',
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['notification-logs'] });
       setShowConfirmDialog(false);
       resetForm();
