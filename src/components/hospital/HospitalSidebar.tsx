@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Home,
-  Users,
   Bell,
   LogOut,
   Settings
@@ -44,12 +43,17 @@ const HospitalSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onM
     fetchUnviewedCount();
     // Refresh every 30 seconds
     const interval = setInterval(fetchUnviewedCount, 30000);
-    return () => clearInterval(interval);
+    // Listen for alert-viewed events to refresh immediately
+    const handleAlertViewed = () => fetchUnviewedCount();
+    window.addEventListener('alert-viewed', handleAlertViewed);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('alert-viewed', handleAlertViewed);
+    };
   }, []);
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Dashboard", path: "/hospital" },
-    { icon: Users, label: "Users", path: "/hospital/users" },
     { icon: Bell, label: "Alerts", path: "/hospital/alerts" },
     { icon: Settings, label: "Settings", path: "/hospital/settings" },
   ];

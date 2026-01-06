@@ -15,7 +15,7 @@ import {
   Send
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { alertsAPI } from "@/services/api";
+import { alertsAPI, partnersAPI } from "@/services/api";
 
 interface NavItem {
   icon: React.ElementType;
@@ -35,6 +35,7 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
   const navigate = useNavigate();
   const { logout, isSuperAdmin, user } = useAuth();
   const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Fetch unviewed alerts count
   useEffect(() => {
@@ -50,7 +51,35 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
     fetchUnviewedCount();
     // Refresh every 30 seconds
     const interval = setInterval(fetchUnviewedCount, 30000);
-    return () => clearInterval(interval);
+    // Listen for alert-viewed events to refresh immediately
+    const handleAlertViewed = () => fetchUnviewedCount();
+    window.addEventListener('alert-viewed', handleAlertViewed);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('alert-viewed', handleAlertViewed);
+    };
+  }, []);
+
+  // Fetch pending requests count
+  useEffect(() => {
+    const fetchPendingRequests = async () => {
+      try {
+        const response = await partnersAPI.getStats();
+        setPendingRequestsCount(response.data?.pending || 0);
+      } catch (error) {
+        console.error('Failed to fetch pending requests count:', error);
+      }
+    };
+    fetchPendingRequests();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPendingRequests, 30000);
+    // Listen for request-updated events to refresh immediately
+    const handleRequestUpdated = () => fetchPendingRequests();
+    window.addEventListener('request-updated', handleRequestUpdated);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('request-updated', handleRequestUpdated);
+    };
   }, []);
 
   const navItems: NavItem[] = [
@@ -151,6 +180,16 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
               {isExpanded && (
                 <span className="transition-colors duration-300 whitespace-nowrap overflow-hidden flex-1">
                   {item.label}
+                </span>
+              )}
+
+              {/* Pending requests badge for Requests menu item */}
+              {item.path === `${basePath}/requests` && pendingRequestsCount > 0 && (
+                <span className={cn(
+                  "flex items-center justify-center text-xs font-bold text-white bg-orange-500 rounded-full animate-pulse",
+                  isExpanded ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
+                )}>
+                  {pendingRequestsCount > 99 ? '99+' : pendingRequestsCount}
                 </span>
               )}
 

@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
-  Users, 
   Bell,
   LogOut,
   Settings
@@ -44,12 +43,17 @@ const PoliceSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onMob
     fetchUnviewedCount();
     // Refresh every 30 seconds
     const interval = setInterval(fetchUnviewedCount, 30000);
-    return () => clearInterval(interval);
+    // Listen for alert-viewed events to refresh immediately
+    const handleAlertViewed = () => fetchUnviewedCount();
+    window.addEventListener('alert-viewed', handleAlertViewed);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('alert-viewed', handleAlertViewed);
+    };
   }, []);
 
   const navItems: NavItem[] = [
     { icon: Home, label: "Dashboard", path: "/police" },
-    { icon: Users, label: "Users", path: "/police/users" },
     { icon: Bell, label: "Alerts", path: "/police/alerts" },
     { icon: Settings, label: "Settings", path: "/police/settings" },
   ];

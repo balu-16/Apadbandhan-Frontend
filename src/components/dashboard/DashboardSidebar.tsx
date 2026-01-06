@@ -53,7 +53,13 @@ const DashboardSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, on
     fetchUnviewedCount();
     // Refresh every 30 seconds
     const interval = setInterval(fetchUnviewedCount, 30000);
-    return () => clearInterval(interval);
+    // Listen for alert-viewed events to refresh immediately
+    const handleAlertViewed = () => fetchUnviewedCount();
+    window.addEventListener('alert-viewed', handleAlertViewed);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('alert-viewed', handleAlertViewed);
+    };
   }, []);
 
   const handleLogout = () => {

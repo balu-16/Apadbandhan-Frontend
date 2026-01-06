@@ -114,12 +114,12 @@ const endIcon = new L.DivIcon({
 
 // SOS Alert blinking icon
 const sosAlertIcon = L.divIcon({
-  className: 'custom-marker sos-active',
+  className: '',
   html: `
-    <div style="position: relative; width: 40px; height: 40px;">
-      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite;"></div>
-      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite 0.5s;"></div>
-      <div class="sos-marker-blink" style="
+    <div style="position: relative; width: 40px; height: 40px; margin-left: -20px; margin-top: -20px;">
+      <div style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite;"></div>
+      <div style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite 0.5s;"></div>
+      <div style="
         position: absolute;
         top: 0;
         left: 0;
@@ -138,9 +138,8 @@ const sosAlertIcon = L.divIcon({
       </div>
     </div>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-  popupAnchor: [0, -20],
+  iconSize: [0, 0],
+  iconAnchor: [0, 0],
 });
 
 interface LocationHistory {

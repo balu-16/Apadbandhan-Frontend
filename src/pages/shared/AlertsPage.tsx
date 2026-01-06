@@ -76,12 +76,12 @@ L.Icon.Default.mergeOptions({
 
 // Blinking SOS alert marker icon
 const sosAlertIcon = L.divIcon({
-  className: 'custom-marker sos-active',
+  className: '',
   html: `
-    <div style="position: relative; width: 40px; height: 40px;">
-      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite;"></div>
-      <div class="sos-pulse-ring" style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite 0.5s;"></div>
-      <div class="sos-marker-blink" style="
+    <div style="position: relative; width: 40px; height: 40px; margin-left: -20px; margin-top: -20px;">
+      <div style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite;"></div>
+      <div style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: sos-pulse-ring 1.5s ease-out infinite 0.5s;"></div>
+      <div style="
         position: absolute;
         top: 0;
         left: 0;
@@ -100,8 +100,8 @@ const sosAlertIcon = L.divIcon({
       </div>
     </div>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
+  iconSize: [0, 0],
+  iconAnchor: [0, 0],
 });
 
 interface EmergencyContact {
@@ -860,6 +860,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
     // Mark the alert as viewed by this user (reduces sidebar badge count)
     try {
       await alertsAPI.markAsViewed(alert._id, alert.source || 'alert');
+      // Dispatch custom event to notify sidebars to refresh their badge count
+      window.dispatchEvent(new CustomEvent('alert-viewed'));
     } catch (error) {
       // Silently fail - viewing should still work even if marking fails
       console.error('Failed to mark alert as viewed:', error);
@@ -1053,7 +1055,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
           {filteredAlerts.map((alert) => (
             <div
               key={alert._id}
-              className="bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 transition-all"
+              className="bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 transition-all cursor-pointer"
+              onClick={() => handleViewAlert(alert)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -1128,7 +1131,7 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                     <Button
                       variant={hasUserResponded(alert) ? "secondary" : "default"}
                       size="sm"
-                      onClick={() => handleRespondToAlert(alert)}
+                      onClick={(e) => { e.stopPropagation(); handleRespondToAlert(alert); }}
                       disabled={respondingToId === alert._id || hasUserResponded(alert)}
                       className={cn(
                         "gap-1",
@@ -1150,7 +1153,7 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleViewAlert(alert)}
+                    onClick={(e) => { e.stopPropagation(); handleViewAlert(alert); }}
                     className="gap-1"
                   >
                     <Eye className="w-4 h-4" />
@@ -1161,7 +1164,7 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDeleteClick(alert)}
+                      onClick={(e) => { e.stopPropagation(); handleDeleteClick(alert); }}
                       disabled={deletingId === alert._id}
                       className="gap-1 text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/30"
                     >
