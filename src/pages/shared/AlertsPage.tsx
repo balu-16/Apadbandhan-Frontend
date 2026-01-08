@@ -776,10 +776,10 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
       let alertsRes, statsRes;
 
       if (portalType === 'police') {
-        // Use police-specific APIs
+        // Use police-specific APIs with pagination
         const { policeAPI } = await import('@/services/api');
         [alertsRes, statsRes] = await Promise.all([
-          policeAPI.getAllAlerts(),
+          policeAPI.getAlerts({ page, limit: 10 }),
           policeAPI.getStats(),
         ]);
 
@@ -795,9 +795,10 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
           }
         };
       } else if (portalType === 'hospital') {
+        // Use hospital-specific APIs with pagination
         const { hospitalAPI } = await import('@/services/api');
         [alertsRes, statsRes] = await Promise.all([
-          hospitalAPI.getAllAlerts(),
+          hospitalAPI.getAlerts({ page, limit: 10 }),
           hospitalAPI.getStats(),
         ]);
         // Adapt hospital stats if needed (assuming similar to police or alerts)
@@ -829,11 +830,9 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
         : (alertsRes.data?.data || []);
       setAlerts(alertsData);
       
-      // Set pagination info for admin/superadmin
-      if (portalType === 'admin' || portalType === 'superadmin') {
-        setTotalPages(alertsRes.data?.meta?.totalPages || 1);
-        setTotalItems(alertsRes.data?.meta?.total || alertsData.length);
-      }
+      // Set pagination info for all portal types
+      setTotalPages(alertsRes.data?.meta?.totalPages || 1);
+      setTotalItems(alertsRes.data?.meta?.total || alertsData.length);
       setStats(statsRes.data);
     } catch {
       setAlerts([]);
@@ -1196,8 +1195,8 @@ const AlertsPage = ({ portalType }: AlertsPageProps) => {
         </div>
       )}
 
-      {/* Pagination Controls - Only show for admin/superadmin */}
-      {(portalType === 'admin' || portalType === 'superadmin') && totalPages > 0 && (
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
         <div className="mt-6">
           <PaginationControls
             currentPage={page}

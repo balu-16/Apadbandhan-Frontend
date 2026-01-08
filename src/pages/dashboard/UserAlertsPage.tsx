@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { useAuth } from "@/contexts/AuthContext";
 import { alertsAPI } from "@/services/api";
 import {
@@ -119,17 +121,30 @@ const UserAlertsPage = () => {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchUserAlerts = useCallback(async (showRefresh = false, source: SourceFilter = 'all') => {
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  const fetchUserAlerts = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
     else setIsLoading(true);
 
     try {
-      // Fetch combined alerts (both SOS and device-triggered alerts)
-      const response = await alertsAPI.getCombined(source);
+      // Fetch combined alerts (both SOS and device-triggered alerts) with pagination
+      const response = await alertsAPI.getCombined(sourceFilter, {
+        page,
+        limit: 10,
+      });
       // Handle paginated response structure { data: [...], meta: {...} }
       const combinedAlerts = Array.isArray(response.data) 
         ? response.data 
         : (response.data?.data || []);
+
+      // Set pagination info
+      setTotalPages(response.data?.meta?.totalPages || 1);
+      setTotalItems(response.data?.meta?.total || combinedAlerts.length);
 
       // Map to standard Alert format
       const userAlerts: Alert[] = combinedAlerts.map((item: any) => ({
@@ -146,9 +161,6 @@ const UserAlertsPage = () => {
         resolvedAt: item.resolvedAt,
       }));
 
-      // Sort by date descending
-      userAlerts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
       setAlerts(userAlerts);
     } catch (error: unknown) {
       console.error("Failed to fetch user alerts:", error);
@@ -157,14 +169,23 @@ const UserAlertsPage = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [sourceFilter, page]);
 
   useEffect(() => {
-    fetchUserAlerts(false, sourceFilter);
-  }, [sourceFilter]);
+    fetchUserAlerts();
+  }, [fetchUserAlerts]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [sourceFilter, debouncedSearchQuery]);
 
   const handleSourceFilterChange = (source: SourceFilter) => {
     setSourceFilter(source);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   const handleViewAlert = async (alert: Alert) => {
@@ -220,7 +241,7 @@ const UserAlertsPage = () => {
         <Button
           variant="outline"
           size="icon"
-          onClick={() => fetchUserAlerts(true, sourceFilter)}
+          onClick={() => fetchUserAlerts(true)}
           disabled={isRefreshing}
         >
           <RefreshCw className={cn("w-5 h-5", isRefreshing && "animate-spin")} />
@@ -358,6 +379,19 @@ const UserAlertsPage = () => {
           <p className="text-muted-foreground">
             You haven't triggered any alerts yet
           </p>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 0 && (
+        <div className="mt-6">
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={totalItems}
+            isLoading={isLoading}
+          />
         </div>
       )}
 

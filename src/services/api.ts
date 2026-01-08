@@ -347,8 +347,8 @@ export const policeAPI = {
   // Get all alerts
   getAllAlerts: () => api.get('/police/alerts'),
 
-  // Get alerts with params
-  getAlerts: (params?: { status?: string; limit?: number }) =>
+  // Get alerts with params and pagination
+  getAlerts: (params?: { status?: string; limit?: number; page?: number }) =>
     api.get('/police/alerts', { params }),
 
   // Get alert details with user info
@@ -396,8 +396,8 @@ export const hospitalAPI = {
   // Get all alerts
   getAllAlerts: () => api.get('/hospital/alerts'),
 
-  // Get alerts with params
-  getAlerts: (params?: { status?: string; limit?: number }) =>
+  // Get alerts with params and pagination
+  getAlerts: (params?: { status?: string; limit?: number; page?: number }) =>
     api.get('/hospital/alerts', { params }),
 
   // Get alert details with user info

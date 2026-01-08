@@ -130,7 +130,8 @@ export const useOneSignal = () => {
     }
   }, [getOneSignal]);
 
-  // Set external user ID for targeting - using tags as primary method (more reliable)
+  // Set external user ID for targeting - uses both login (for external_id) and tags (for fallback)
+  // IMPORTANT: login() is critical for multi-device support - it associates this subscription with the external_id
   const setExternalUserId = useCallback(async (userId: string, userRole?: string): Promise<void> => {
     if (!userId) {
       console.warn('[OneSignal] No user ID provided');
@@ -148,7 +149,22 @@ export const useOneSignal = () => {
         return;
       }
 
-      // Use tags for user identification (more reliable than login)
+      // CRITICAL: Call login() FIRST to associate this subscription with the external_id
+      // This enables multi-device notifications - all devices with the same login will receive notifications
+      let loginSuccessful = false;
+      try {
+        if (OneSignal.login && typeof OneSignal.login === 'function') {
+          await OneSignal.login(userId);
+          loginSuccessful = true;
+          console.log('[OneSignal] Login successful for:', userId);
+        }
+      } catch (loginError: any) {
+        console.warn('[OneSignal] Login failed:', loginError?.message || loginError);
+        // Continue to set tags as fallback
+      }
+
+      // Also set tags as fallback for notification targeting
+      // Tags work per-subscription and provide defense-in-depth if login fails
       const tags: Record<string, string> = {
         user_id: userId,
         external_user_id: userId,
@@ -159,19 +175,7 @@ export const useOneSignal = () => {
       }
 
       await OneSignal.User.addTags(tags);
-      console.log('[OneSignal] User tags set:', tags);
-
-      // Try login but don't fail if it doesn't work
-      // The SDK's login() can fail if internal state isn't ready
-      try {
-        if (OneSignal.login && typeof OneSignal.login === 'function') {
-          await OneSignal.login(userId);
-          console.log('[OneSignal] Login successful for:', userId);
-        }
-      } catch (loginError) {
-        // Login failed but tags are set - user can still receive targeted notifications
-        console.log('[OneSignal] Login skipped (tags already set):', loginError);
-      }
+      console.log('[OneSignal] User tags set:', tags, loginSuccessful ? '(login successful)' : '(login failed, using tags as fallback)');
 
     } catch (error: any) {
       console.error('[OneSignal] Failed to set user identification:', error);
