@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X, Cross } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ApadbandhavChatbot from "@/components/chatbot/ApadbandhavChatbot";
 
 const HospitalLayout = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -100,6 +101,9 @@ const HospitalLayout = () => {
           <Outlet />
         </div>
       </main>
+
+      {/* AI Chatbot */}
+      <ApadbandhavChatbot userRole="hospital" />
     </div>
   );
 };

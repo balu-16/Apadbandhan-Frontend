@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ApadbandhavChatbot from "@/components/chatbot/ApadbandhavChatbot";
 
 const PoliceLayout = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -100,6 +101,9 @@ const PoliceLayout = () => {
           <Outlet />
         </div>
       </main>
+
+      {/* AI Chatbot */}
+      <ApadbandhavChatbot userRole="police" />
     </div>
   );
 };

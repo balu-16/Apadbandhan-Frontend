@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ApadbandhavChatbot from "@/components/chatbot/ApadbandhavChatbot";
 
 const DashboardLayout = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -94,6 +95,9 @@ const DashboardLayout = () => {
           <Outlet />
         </div>
       </main>
+
+      {/* AI Chatbot */}
+      <ApadbandhavChatbot userRole="user" />
     </div>
   );
 };

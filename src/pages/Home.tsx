@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import WorkflowStep from "@/components/home/WorkflowStep";
+import ApadbandhavChatbot from "@/components/chatbot/ApadbandhavChatbot";
 import { 
   AlertTriangle, 
   Satellite, 
@@ -232,6 +233,9 @@ const Home = () => {
       </section>
 
       <Footer />
+
+      {/* AI Chatbot for public visitors */}
+      <ApadbandhavChatbot />
     </div>
   );
 };

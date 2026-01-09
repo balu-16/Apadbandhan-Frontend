@@ -4,6 +4,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import FeatureCard from "@/components/home/FeatureCard";
 import SafetyCard from "@/components/home/SafetyCard";
+import ApadbandhavChatbot from "@/components/chatbot/ApadbandhavChatbot";
 import { 
   AlertTriangle, 
   Cpu, 
@@ -215,6 +216,9 @@ const Index = () => {
       </section>
 
       <Footer />
+
+      {/* AI Chatbot for public visitors */}
+      <ApadbandhavChatbot />
     </div>
   );
 };
