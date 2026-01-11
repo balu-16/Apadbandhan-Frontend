@@ -618,7 +618,8 @@ const DeviceDetailsModal = ({ device, open, onOpenChange, readOnly = false }: De
                 </div>
               )}
 
-              {/* Sharing Information */}
+              {/* Sharing Information - Only visible to device owner */}
+              {!readOnly && (
               <div className="bg-muted/30 rounded-xl p-4">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Share2 className="w-4 h-4 text-primary" />
@@ -661,6 +662,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange, readOnly = false }: De
                   </div>
                 )}
               </div>
+              )}
             </div>
           </TabsContent>
 

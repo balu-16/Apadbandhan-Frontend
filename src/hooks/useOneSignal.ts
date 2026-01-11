@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
+import { notificationLogger } from '@/lib/logger';
 
 declare global {
   interface Window {
@@ -99,7 +100,7 @@ export const useOneSignal = () => {
         });
 
       } catch (error) {
-        console.error('[OneSignal] Failed to initialize state:', error);
+        notificationLogger.error('Failed to initialize state', error);
         setState(prev => ({ ...prev, isInitialized: false }));
       }
     };
@@ -125,7 +126,7 @@ export const useOneSignal = () => {
 
       return isSubscribed || false;
     } catch (error) {
-      console.error('[OneSignal] Failed to request permission:', error);
+      notificationLogger.error('Failed to request permission', error);
       return false;
     }
   }, [getOneSignal]);
@@ -134,7 +135,7 @@ export const useOneSignal = () => {
   // IMPORTANT: login() is critical for multi-device support - it associates this subscription with the external_id
   const setExternalUserId = useCallback(async (userId: string, userRole?: string): Promise<void> => {
     if (!userId) {
-      console.warn('[OneSignal] No user ID provided');
+      notificationLogger.warn('No user ID provided');
       return;
     }
 
@@ -145,7 +146,7 @@ export const useOneSignal = () => {
       const OneSignal = await getOneSignal();
       
       if (!OneSignal || !OneSignal.User) {
-        console.warn('[OneSignal] SDK not ready, skipping user identification');
+        notificationLogger.warn('SDK not ready, skipping user identification');
         return;
       }
 
@@ -156,10 +157,10 @@ export const useOneSignal = () => {
         if (OneSignal.login && typeof OneSignal.login === 'function') {
           await OneSignal.login(userId);
           loginSuccessful = true;
-          console.log('[OneSignal] Login successful for:', userId);
+          notificationLogger.info('Login successful for:', userId);
         }
       } catch (loginError: any) {
-        console.warn('[OneSignal] Login failed:', loginError?.message || loginError);
+        notificationLogger.warn('Login failed:', loginError?.message || loginError);
         // Continue to set tags as fallback
       }
 
@@ -175,10 +176,10 @@ export const useOneSignal = () => {
       }
 
       await OneSignal.User.addTags(tags);
-      console.log('[OneSignal] User tags set:', tags, loginSuccessful ? '(login successful)' : '(login failed, using tags as fallback)');
+      notificationLogger.info('User tags set', { tags, loginSuccessful });
 
     } catch (error: any) {
-      console.error('[OneSignal] Failed to set user identification:', error);
+      notificationLogger.error('Failed to set user identification', error);
     }
   }, [getOneSignal]);
 
@@ -194,22 +195,22 @@ export const useOneSignal = () => {
       // Remove tags first (always works)
       try {
         await OneSignal.User.removeTags(['user_id', 'external_user_id', 'role']);
-        console.log('[OneSignal] User tags removed');
+        notificationLogger.info('User tags removed');
       } catch (e) {
-        console.log('[OneSignal] Failed to remove tags:', e);
+        notificationLogger.debug('Failed to remove tags', e);
       }
 
       // Try logout but don't fail if it doesn't work
       try {
         if (OneSignal.logout && typeof OneSignal.logout === 'function') {
           await OneSignal.logout();
-          console.log('[OneSignal] Logout successful');
+          notificationLogger.info('Logout successful');
         }
       } catch (logoutError) {
-        console.log('[OneSignal] Logout skipped:', logoutError);
+        notificationLogger.debug('Logout skipped', logoutError);
       }
     } catch (error) {
-      console.error('[OneSignal] Failed to remove external user ID:', error);
+      notificationLogger.error('Failed to remove external user ID', error);
     }
   }, [getOneSignal]);
 
@@ -220,9 +221,9 @@ export const useOneSignal = () => {
       await OneSignal.User.PushSubscription.optOut();
       
       setState(prev => ({ ...prev, isSubscribed: false }));
-      console.log('[OneSignal] User opted out');
+      notificationLogger.info('User opted out');
     } catch (error) {
-      console.error('[OneSignal] Failed to opt out:', error);
+      notificationLogger.error('Failed to opt out', error);
     }
   }, [getOneSignal]);
 
@@ -233,9 +234,9 @@ export const useOneSignal = () => {
       await OneSignal.User.PushSubscription.optIn();
       
       setState(prev => ({ ...prev, isSubscribed: true }));
-      console.log('[OneSignal] User opted in');
+      notificationLogger.info('User opted in');
     } catch (error) {
-      console.error('[OneSignal] Failed to opt in:', error);
+      notificationLogger.error('Failed to opt in', error);
     }
   }, [getOneSignal]);
 
@@ -246,7 +247,7 @@ export const useOneSignal = () => {
       const subscription = await OneSignal.User.PushSubscription;
       return subscription?.id || null;
     } catch (error) {
-      console.error('[OneSignal] Failed to get player ID:', error);
+      notificationLogger.error('Failed to get player ID', error);
       return null;
     }
   }, [getOneSignal]);
@@ -256,9 +257,9 @@ export const useOneSignal = () => {
     try {
       const OneSignal = await getOneSignal();
       await OneSignal.User.addTags(tags);
-      console.log('[OneSignal] Tags added:', tags);
+      notificationLogger.info('Tags added', tags);
     } catch (error) {
-      console.error('[OneSignal] Failed to add tags:', error);
+      notificationLogger.error('Failed to add tags', error);
     }
   }, [getOneSignal]);
 
@@ -267,9 +268,9 @@ export const useOneSignal = () => {
     try {
       const OneSignal = await getOneSignal();
       await OneSignal.User.removeTags(tagKeys);
-      console.log('[OneSignal] Tags removed:', tagKeys);
+      notificationLogger.info('Tags removed', tagKeys);
     } catch (error) {
-      console.error('[OneSignal] Failed to remove tags:', error);
+      notificationLogger.error('Failed to remove tags', error);
     }
   }, [getOneSignal]);
 
