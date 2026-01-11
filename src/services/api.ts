@@ -122,8 +122,14 @@ api.interceptors.response.use(
 export const authAPI = {
   sendOtp: (phone: string) => api.post('/auth/send-otp', { phone }),
   verifyOtp: (phone: string, otp: string) => api.post('/auth/verify-otp', { phone, otp }),
-  signup: (data: { phone: string; otp: string; fullName: string; email: string }) =>
-    api.post('/auth/signup', data),
+  signup: (data: { 
+    phone: string; 
+    otp: string; 
+    fullName: string; 
+    email: string;
+    bloodGroup?: string;
+    emergencyContacts?: Array<{ name: string; phone: string; relation?: string }>;
+  }) => api.post('/auth/signup', data),
   getProfile: () => api.get('/auth/me'),
 };
 

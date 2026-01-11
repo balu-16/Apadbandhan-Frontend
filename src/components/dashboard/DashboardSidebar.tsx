@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect } from "react";
+import React, { memo, useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -12,19 +12,34 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { alertsAPI } from "@/services/api";
 
+// Memoized badge counter component to prevent sidebar re-renders
+const BadgeCounter = memo(({ count, color }: { count: number; color: string }) => {
+  if (count === 0) return null;
+  return (
+    <span className={cn(
+      "flex items-center justify-center text-xs font-bold text-white rounded-full animate-pulse",
+      "h-5 min-w-5 px-1.5",
+      color
+    )}>
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+});
+BadgeCounter.displayName = 'BadgeCounter';
+
 interface NavItem {
   icon: React.ElementType;
   label: string;
   path: string;
 }
 
-const navItems: NavItem[] = [
+const navItems: NavItem[] = useMemo(() => [
   { icon: Home, label: "Home", path: "/dashboard" },
   { icon: PlusCircle, label: "Add Device", path: "/dashboard/add-device" },
   { icon: Smartphone, label: "Devices", path: "/dashboard/devices" },
   { icon: Bell, label: "My Alerts", path: "/dashboard/alerts" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
-];
+], []);
 
 interface DashboardSidebarProps {
   isExpanded: boolean;
@@ -62,17 +77,17 @@ const DashboardSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, on
     };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
     navigate("/");
-  };
+  }, [logout, navigate]);
 
-  const isActive = (path: string) => {
+  const isActive = useCallback((path: string) => {
     if (path === "/dashboard") {
       return currentPath === "/dashboard";
     }
     return currentPath.startsWith(path);
-  };
+  }, [currentPath]);
 
   return (
     <aside 
@@ -151,13 +166,8 @@ const DashboardSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, on
               )}
 
               {/* Pending alerts badge for Alerts menu item */}
-              {item.path === '/dashboard/alerts' && pendingAlertsCount > 0 && (
-                <span className={cn(
-                  "flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full animate-pulse",
-                  (isExpanded || isMobile) ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
-                )}>
-                  {pendingAlertsCount > 99 ? '99+' : pendingAlertsCount}
-                </span>
+              {item.path === '/dashboard/alerts' && (
+                <BadgeCounter count={pendingAlertsCount} color="bg-red-500" />
               )}
             </Link>
           );

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState, useEffect } from "react";
+import React, { memo, useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -16,6 +16,21 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { alertsAPI, partnersAPI } from "@/services/api";
+
+// Memoized badge counter component to prevent sidebar re-renders
+const BadgeCounter = memo(({ count, color }: { count: number; color: string }) => {
+  if (count === 0) return null;
+  return (
+    <span className={cn(
+      "flex items-center justify-center text-xs font-bold text-white rounded-full animate-pulse",
+      "h-5 min-w-5 px-1.5",
+      color
+    )}>
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+});
+BadgeCounter.displayName = 'BadgeCounter';
 
 interface NavItem {
   icon: React.ElementType;
@@ -36,6 +51,20 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
   const { logout, isSuperAdmin, user } = useAuth();
   const [pendingAlertsCount, setPendingAlertsCount] = useState(0);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+
+  // Memoize nav items to prevent recreation on each render
+  const navItems: NavItem[] = useMemo(() => [
+    { icon: Home, label: "Dashboard", path: basePath },
+    { icon: Users, label: "Users", path: `${basePath}/users` },
+    { icon: UserCog, label: "Admins", path: `${basePath}/admins`, superAdminOnly: true },
+    { icon: Shield, label: "Police", path: `${basePath}/police`, superAdminOnly: true },
+    { icon: Cross, label: "Hospitals", path: `${basePath}/hospitals`, superAdminOnly: true },
+    { icon: Smartphone, label: "Devices", path: `${basePath}/devices` },
+    { icon: FileText, label: "Requests", path: `${basePath}/requests` },
+    { icon: Bell, label: "Alerts", path: `${basePath}/alerts` },
+    { icon: Send, label: "Notifications", path: `${basePath}/notifications`, superAdminOnly: true },
+    { icon: Settings, label: "Settings", path: `${basePath}/settings` },
+  ], [basePath]);
 
   // Fetch unviewed alerts count
   useEffect(() => {
@@ -82,34 +111,21 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
     };
   }, []);
 
-  const navItems: NavItem[] = [
-    { icon: Home, label: "Dashboard", path: basePath },
-    { icon: Users, label: "Users", path: `${basePath}/users` },
-    { icon: UserCog, label: "Admins", path: `${basePath}/admins`, superAdminOnly: true },
-    { icon: Shield, label: "Police", path: `${basePath}/police`, superAdminOnly: true },
-    { icon: Cross, label: "Hospitals", path: `${basePath}/hospitals`, superAdminOnly: true },
-    { icon: Smartphone, label: "Devices", path: `${basePath}/devices` },
-    { icon: FileText, label: "Requests", path: `${basePath}/requests` },
-    { icon: Bell, label: "Alerts", path: `${basePath}/alerts` },
-    { icon: Send, label: "Notifications", path: `${basePath}/notifications`, superAdminOnly: true },
-    { icon: Settings, label: "Settings", path: `${basePath}/settings` },
-  ];
-
-  const filteredNavItems = navItems.filter(item => 
+  const filteredNavItems = useMemo(() => navItems.filter(item => 
     !item.superAdminOnly || (item.superAdminOnly && isSuperAdmin)
-  );
+  ), [navItems, isSuperAdmin]);
 
-  const isActive = (path: string) => {
+  const isActive = useCallback((path: string) => {
     if (path === basePath) {
       return currentPath === basePath;
     }
     return currentPath.startsWith(path);
-  };
+  }, [basePath, currentPath]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
     navigate("/");
-  };
+  }, [logout, navigate]);
 
   return (
     <aside 
@@ -184,23 +200,13 @@ const AdminSidebar = memo(({ isExpanded, setIsExpanded, basePath, currentPath }:
               )}
 
               {/* Pending requests badge for Requests menu item */}
-              {item.path === `${basePath}/requests` && pendingRequestsCount > 0 && (
-                <span className={cn(
-                  "flex items-center justify-center text-xs font-bold text-white bg-orange-500 rounded-full animate-pulse",
-                  isExpanded ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
-                )}>
-                  {pendingRequestsCount > 99 ? '99+' : pendingRequestsCount}
-                </span>
+              {item.path === `${basePath}/requests` && (
+                <BadgeCounter count={pendingRequestsCount} color="bg-orange-500" />
               )}
 
               {/* Pending alerts badge for Alerts menu item */}
-              {item.path === `${basePath}/alerts` && pendingAlertsCount > 0 && (
-                <span className={cn(
-                  "flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full animate-pulse",
-                  isExpanded ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
-                )}>
-                  {pendingAlertsCount > 99 ? '99+' : pendingAlertsCount}
-                </span>
+              {item.path === `${basePath}/alerts` && (
+                <BadgeCounter count={pendingAlertsCount} color="bg-red-500" />
               )}
             </Link>
           );

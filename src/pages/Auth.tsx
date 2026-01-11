@@ -2,13 +2,20 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocationTracking } from "@/contexts/LocationTrackingContext";
 import { authAPI } from "@/services/api";
 import AuthLayout from "@/components/auth/AuthLayout";
 import authHero from "@/assets/auth-hero.png";
-import { Loader2 } from "lucide-react";
+import { Loader2, Droplet, UserPlus, Plus, X, ChevronRight, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AxiosErrorLike {
@@ -22,16 +29,24 @@ interface AxiosErrorLike {
 }
 
 type AuthMode = "login" | "signup";
+type SignupStep = "basic" | "medical";
 
 const Auth = () => {
   // Auth mode toggle
   const [mode, setMode] = useState<AuthMode>("login");
+  const [signupStep, setSignupStep] = useState<SignupStep>("basic");
   
   // Form fields
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  
+  // Medical info fields
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [emergencyContacts, setEmergencyContacts] = useState<Array<{ name: string; phone: string; relation: string }>>([
+    { name: "", phone: "", relation: "" }
+  ]);
   
   // State
   const [otpSent, setOtpSent] = useState(false);
@@ -50,6 +65,22 @@ const Auth = () => {
     // Reset form state when switching modes
     setOtpSent(false);
     setOtp("");
+    setSignupStep("basic");
+  };
+
+  // Emergency contacts helpers
+  const addEmergencyContact = () => {
+    setEmergencyContacts([...emergencyContacts, { name: "", phone: "", relation: "" }]);
+  };
+
+  const removeEmergencyContact = (index: number) => {
+    setEmergencyContacts(emergencyContacts.filter((_, i) => i !== index));
+  };
+
+  const updateEmergencyContact = (index: number, field: string, value: string) => {
+    const updated = [...emergencyContacts];
+    updated[index] = { ...updated[index], [field]: value };
+    setEmergencyContacts(updated);
   };
 
   const handleSendOtp = async () => {
@@ -152,7 +183,7 @@ const Auth = () => {
     }
   };
 
-  const handleSignup = async () => {
+  const proceedToMedicalInfo = () => {
     if (!fullName || !email || !otp) {
       toast({
         title: "Error",
@@ -171,6 +202,33 @@ const Auth = () => {
       return;
     }
     
+    setSignupStep("medical");
+  };
+
+  const handleSignup = async (skipMedicalInfo: boolean = false) => {
+    if (!fullName || !email || !otp) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (otp.length < 6) {
+      toast({
+        title: "Error",
+        description: "Please enter the 6-digit OTP",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Filter out empty emergency contacts
+    const validEmergencyContacts = skipMedicalInfo 
+      ? [] 
+      : emergencyContacts.filter(ec => ec.name && ec.phone);
+    
     setIsLoading(true);
     try {
       const response = await authAPI.signup({
@@ -178,6 +236,8 @@ const Auth = () => {
         otp,
         fullName,
         email,
+        bloodGroup: skipMedicalInfo ? undefined : (bloodGroup || undefined),
+        emergencyContacts: validEmergencyContacts.length > 0 ? validEmergencyContacts : undefined,
       });
       
       const { access_token, user } = response.data;
@@ -223,8 +283,10 @@ const Auth = () => {
   const handleSubmit = () => {
     if (mode === "login") {
       handleLogin();
+    } else if (signupStep === "basic") {
+      proceedToMedicalInfo();
     } else {
-      handleSignup();
+      handleSignup(false);
     }
   };
 
@@ -354,24 +416,153 @@ const Auth = () => {
               />
             </div>
 
-            {/* Submit button */}
-            <Button 
-              variant="hero" 
-              className="w-full" 
-              size="lg"
-              onClick={handleSubmit}
-              disabled={isLoading || !canSubmit()}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  {mode === "login" ? "Logging in..." : "Creating Account..."}
-                </>
-              ) : (
-                mode === "login" ? "Login" : "Sign Up"
-              )}
-            </Button>
+            {/* Submit button for basic step */}
+            {(mode === "login" || signupStep === "basic") && (
+              <Button 
+                variant="hero" 
+                className="w-full" 
+                size="lg"
+                onClick={handleSubmit}
+                disabled={isLoading || !canSubmit()}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    {mode === "login" ? "Logging in..." : "Creating Account..."}
+                  </>
+                ) : (
+                  mode === "login" ? "Login" : (
+                    <>
+                      Continue
+                      <ChevronRight className="w-5 h-5 ml-1" />
+                    </>
+                  )
+                )}
+              </Button>
+            )}
           </div>
+
+          {/* Medical Information Step (Signup only) */}
+          {mode === "signup" && signupStep === "medical" && (
+            <div className="space-y-6 animate-fade-up">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-1">Medical Information</h3>
+                <p className="text-sm text-muted-foreground">Optional: Add medical details for emergencies</p>
+              </div>
+
+              {/* Blood Group */}
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                  <Droplet className="w-4 h-4 text-red-500" />
+                  Blood Group
+                </label>
+                <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your blood group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A+">A+</SelectItem>
+                    <SelectItem value="A-">A-</SelectItem>
+                    <SelectItem value="B+">B+</SelectItem>
+                    <SelectItem value="B-">B-</SelectItem>
+                    <SelectItem value="AB+">AB+</SelectItem>
+                    <SelectItem value="AB-">AB-</SelectItem>
+                    <SelectItem value="O+">O+</SelectItem>
+                    <SelectItem value="O-">O-</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Emergency Contacts */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-primary" />
+                    Emergency Contacts
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addEmergencyContact}
+                    className="gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {emergencyContacts.map((contact, index) => (
+                    <div key={index} className="grid grid-cols-4 gap-2 items-end p-3 bg-muted/30 rounded-xl">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Name</label>
+                        <Input
+                          placeholder="Name"
+                          value={contact.name}
+                          onChange={(e) => updateEmergencyContact(index, 'name', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Phone</label>
+                        <Input
+                          placeholder="Phone"
+                          value={contact.phone}
+                          onChange={(e) => updateEmergencyContact(index, 'phone', e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Relation</label>
+                        <Input
+                          placeholder="Father"
+                          value={contact.relation}
+                          onChange={(e) => updateEmergencyContact(index, 'relation', e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive"
+                        onClick={() => removeEmergencyContact(index)}
+                        disabled={emergencyContacts.length === 1}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleSignup(true)}
+                  disabled={isLoading}
+                >
+                  <SkipForward className="w-4 h-4 mr-2" />
+                  Skip
+                </Button>
+                <Button
+                  variant="hero"
+                  className="flex-1"
+                  onClick={() => handleSignup(false)}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Complete Sign Up"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="text-center">
             <p className="text-muted-foreground">
@@ -385,7 +576,7 @@ const Auth = () => {
                     Sign up
                   </button>
                 </>
-              ) : (
+              ) : signupStep === "basic" ? (
                 <>
                   Already have an account?{" "}
                   <button 
@@ -395,6 +586,13 @@ const Auth = () => {
                     Login
                   </button>
                 </>
+              ) : (
+                <button 
+                  onClick={() => setSignupStep("basic")}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Go back to basic info
+                </button>
               )}
             </p>
           </div>

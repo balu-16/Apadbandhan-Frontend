@@ -39,8 +39,20 @@ import {
   Monitor,
   Palette,
   LogOut,
-  Hospital
+  Hospital,
+  Droplet,
+  Heart,
+  UserPlus,
+  Plus,
+  X
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
 
@@ -77,6 +89,13 @@ const Settings = () => {
     phone: "",
   });
 
+  // Medical Information
+  const [bloodGroup, setBloodGroup] = useState<string>("");
+  const [emergencyContacts, setEmergencyContacts] = useState<Array<{ name: string; phone: string; relation: string }>>([
+    { name: "", phone: "", relation: "" }
+  ]);
+  const [isSavingMedical, setIsSavingMedical] = useState(false);
+
   // Hospital Preference
   const [hospitalPreference, setHospitalPreference] = useState<"government" | "private" | "both">("government");
 
@@ -104,6 +123,10 @@ const Settings = () => {
           email: userData.email || "",
           phone: userData.phone || "",
         });
+        setBloodGroup(userData.bloodGroup || "");
+        if (userData.emergencyContacts && userData.emergencyContacts.length > 0) {
+          setEmergencyContacts(userData.emergencyContacts);
+        }
         setHospitalPreference(userData.hospitalPreference || "government");
         setNotifications({
           accidentAlerts: userData.accidentAlerts ?? true,
@@ -203,6 +226,48 @@ const Settings = () => {
     } finally {
       setIsSavingProfile(false);
     }
+  };
+
+  const handleSaveMedicalInfo = async () => {
+    if (!user?.id) return;
+
+    // Filter out empty emergency contacts
+    const validContacts = emergencyContacts.filter(ec => ec.name && ec.phone);
+
+    setIsSavingMedical(true);
+    try {
+      await usersAPI.updateProfile(user.id, {
+        bloodGroup: bloodGroup || undefined,
+        emergencyContacts: validContacts,
+      });
+      toast({
+        title: "Medical Information Updated",
+        description: "Your medical information has been saved.",
+      });
+    } catch (error: unknown) {
+      const err = error as AxiosErrorLike;
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to update medical information.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingMedical(false);
+    }
+  };
+
+  const addEmergencyContact = () => {
+    setEmergencyContacts([...emergencyContacts, { name: "", phone: "", relation: "" }]);
+  };
+
+  const removeEmergencyContact = (index: number) => {
+    setEmergencyContacts(emergencyContacts.filter((_, i) => i !== index));
+  };
+
+  const updateEmergencyContact = (index: number, field: string, value: string) => {
+    const updated = [...emergencyContacts];
+    updated[index] = { ...updated[index], [field]: value };
+    setEmergencyContacts(updated);
   };
 
   const handleSaveHospitalPreference = async () => {
@@ -417,6 +482,124 @@ const Settings = () => {
                 )}
               </Button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Medical Information */}
+      <section className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 mb-6 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+        <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+          <Heart className="w-5 h-5 text-primary" />
+          Medical Information
+        </h2>
+
+        <div className="space-y-6">
+          {/* Blood Group */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+              <Droplet className="w-4 h-4 text-red-500" />
+              Blood Group
+            </label>
+            <Select value={bloodGroup} onValueChange={setBloodGroup}>
+              <SelectTrigger className="w-full md:w-64">
+                <SelectValue placeholder="Select your blood group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A+">A+</SelectItem>
+                <SelectItem value="A-">A-</SelectItem>
+                <SelectItem value="B+">B+</SelectItem>
+                <SelectItem value="B-">B-</SelectItem>
+                <SelectItem value="AB+">AB+</SelectItem>
+                <SelectItem value="AB-">AB-</SelectItem>
+                <SelectItem value="O+">O+</SelectItem>
+                <SelectItem value="O-">O-</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Emergency Contacts */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-primary" />
+                Emergency Contacts
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addEmergencyContact}
+                className="gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Add Contact
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {emergencyContacts.map((contact, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end p-4 bg-muted/30 rounded-xl">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Name</label>
+                    <Input
+                      placeholder="Contact name"
+                      value={contact.name}
+                      onChange={(e) => updateEmergencyContact(index, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Phone</label>
+                    <Input
+                      placeholder="Phone number"
+                      value={contact.phone}
+                      onChange={(e) => updateEmergencyContact(index, 'phone', e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Relation</label>
+                    <Input
+                      placeholder="e.g., Father, Mother"
+                      value={contact.relation}
+                      onChange={(e) => updateEmergencyContact(index, 'relation', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removeEmergencyContact(index)}
+                      disabled={emergencyContacts.length === 1}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Save Medical Info Button */}
+          <div className="pt-2 flex justify-end">
+            <Button
+              variant="outline"
+              onClick={handleSaveMedicalInfo}
+              disabled={isSavingMedical}
+              className="gap-2"
+            >
+              {isSavingMedical ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Medical Info
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </section>

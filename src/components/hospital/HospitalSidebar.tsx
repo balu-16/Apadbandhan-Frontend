@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect } from "react";
+import React, { memo, useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -9,6 +9,21 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { hospitalAPI } from "@/services/api";
+
+// Memoized badge counter component to prevent sidebar re-renders
+const BadgeCounter = memo(({ count, color }: { count: number; color: string }) => {
+  if (count === 0) return null;
+  return (
+    <span className={cn(
+      "flex items-center justify-center text-xs font-bold text-white rounded-full",
+      "h-5 min-w-5 px-1.5",
+      color
+    )}>
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+});
+BadgeCounter.displayName = 'BadgeCounter';
 
 interface NavItem {
   icon: React.ElementType;
@@ -52,23 +67,23 @@ const HospitalSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onM
     };
   }, []);
 
-  const navItems: NavItem[] = [
+  const navItems: NavItem[] = useMemo(() => [
     { icon: Home, label: "Dashboard", path: "/hospital" },
     { icon: Bell, label: "Alerts", path: "/hospital/alerts" },
     { icon: Settings, label: "Settings", path: "/hospital/settings" },
-  ];
+  ], []);
 
-  const isActive = (path: string) => {
+  const isActive = useCallback((path: string) => {
     if (path === "/hospital") {
       return currentPath === "/hospital";
     }
     return currentPath.startsWith(path);
-  };
+  }, [currentPath]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
     navigate("/");
-  };
+  }, [logout, navigate]);
 
   return (
     <aside
@@ -146,13 +161,8 @@ const HospitalSidebar = memo(({ isExpanded, setIsExpanded, isMobile = false, onM
               )}
 
               {/* Pending alerts badge for Alerts menu item */}
-              {item.path === '/hospital/alerts' && pendingAlertsCount > 0 && (
-                <span className={cn(
-                  "flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full",
-                  (isExpanded || isMobile) ? "h-5 min-w-5 px-1.5" : "absolute -top-1 -right-1 h-4 min-w-4 px-1"
-                )}>
-                  {pendingAlertsCount > 99 ? '99+' : pendingAlertsCount}
-                </span>
+              {item.path === '/hospital/alerts' && (
+                <BadgeCounter count={pendingAlertsCount} color="bg-red-500" />
               )}
             </Link>
           );
