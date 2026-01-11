@@ -279,6 +279,7 @@ const Devices = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalReadOnly, setIsModalReadOnly] = useState(false);
   const [activeTab, setActiveTab] = useState("my-devices");
 
   // Delete confirmation state
@@ -296,8 +297,9 @@ const Devices = () => {
   const [isSharing, setIsSharing] = useState(false);
   const [isRevoking, setIsRevoking] = useState<string | null>(null);
 
-  const handleDeviceClick = (device: Device) => {
+  const handleDeviceClick = (device: Device, readOnly: boolean = false) => {
     setSelectedDevice(device);
+    setIsModalReadOnly(readOnly);
     setIsModalOpen(true);
   };
 
@@ -657,8 +659,17 @@ const Devices = () => {
               {sharedByMe.map((share, index) => (
                 <div
                   key={share.id}
-                  className="bg-card border border-border/50 rounded-2xl p-4 sm:p-6 animate-fade-up"
+                  className="bg-card border border-border/50 rounded-2xl p-4 sm:p-6 animate-fade-up cursor-pointer hover:border-primary/50 transition-all"
                   style={{ animationDelay: `${0.1 + index * 0.05}s`, animationFillMode: "forwards" }}
+                  onClick={() => handleDeviceClick({
+                    _id: share.deviceId,
+                    name: share.deviceName,
+                    code: share.deviceCode,
+                    type: share.deviceType,
+                    status: share.deviceStatus as "online" | "offline" | "maintenance",
+                    createdAt: share.sharedAt,
+                    updatedAt: share.sharedAt,
+                  }, false)}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -681,7 +692,10 @@ const Devices = () => {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleRevokeShare(share.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRevokeShare(share.id);
+                        }}
                         disabled={isRevoking === share.id}
                       >
                         {isRevoking === share.id ? (
@@ -731,7 +745,15 @@ const Devices = () => {
                     updatedAt: share.sharedAt,
                   }}
                   delay={`${0.1 + index * 0.05}s`}
-                  onClick={() => {}}
+                  onClick={() => handleDeviceClick({
+                    _id: share.deviceId,
+                    name: share.deviceName,
+                    code: share.deviceCode,
+                    type: share.deviceType,
+                    status: share.deviceStatus as "online" | "offline" | "maintenance",
+                    createdAt: share.sharedAt,
+                    updatedAt: share.sharedAt,
+                  }, true)}
                   isReceived={true}
                   ownerName={share.owner.fullName}
                 />
@@ -756,6 +778,7 @@ const Devices = () => {
         device={selectedDevice}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+        readOnly={isModalReadOnly}
       />
 
       {/* Delete Confirmation Dialog */}

@@ -205,11 +205,12 @@ interface DeviceDetailsModalProps {
   device: Device | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  readOnly?: boolean;
 }
 
 const LOCATION_REFRESH_INTERVAL = 10000; // 10 seconds
 
-const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalProps) => {
+const DeviceDetailsModal = ({ device, open, onOpenChange, readOnly = false }: DeviceDetailsModalProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("info");
   const [locationHistory, setLocationHistory] = useState<LocationHistory[]>([]);
@@ -720,6 +721,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   <RefreshCw className={cn("w-3 h-3 sm:w-4 sm:h-4", isRefreshing && "animate-spin")} />
                   <span className="hidden sm:inline">Refresh</span>
                 </Button>
+                {!readOnly && (
                 <Button
                   variant="destructive"
                   size="sm"
@@ -790,6 +792,7 @@ const DeviceDetailsModal = ({ device, open, onOpenChange }: DeviceDetailsModalPr
                   )}
                   {isTriggingSOS ? "Triggering..." : "SOS"}
                 </Button>
+                )}
               </div>
             </div>
 
