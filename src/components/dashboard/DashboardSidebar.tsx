@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect, useMemo, useCallback } from "react";
+import React, { memo, useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
@@ -33,13 +33,13 @@ interface NavItem {
   path: string;
 }
 
-const navItems: NavItem[] = useMemo(() => [
+const navItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/dashboard" },
   { icon: PlusCircle, label: "Add Device", path: "/dashboard/add-device" },
   { icon: Smartphone, label: "Devices", path: "/dashboard/devices" },
   { icon: Bell, label: "My Alerts", path: "/dashboard/alerts" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
-], []);
+];
 
 interface DashboardSidebarProps {
   isExpanded: boolean;
